@@ -1,0 +1,20 @@
+name: Deploy to Firebase Hosting on merge
+'on':
+  push:
+    branches:
+      - main
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          # Seu processo de build (se houver) iria aqui
+          # Como seu site é estático, não precisamos de um passo de build.
+          # Se precisasse, seria algo como 'npm install && npm run build'
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JFFINANCES }}' # <--- MUDE O NOME AQUI
+          channelId: live
+          projectId: jffinances-3d813
