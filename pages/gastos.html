@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gastos - Finnairaceora</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Garantir que o modal seja exibido corretamente */
+        .modal.active {
+            display: flex !important;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <div class="nav-logo">
+                <i class="fas fa-wallet"></i> Finnairaceora
+            </div>
+            <ul class="nav-menu">
+                <li><a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="bancos.html" class="nav-link"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="cartoes.html" class="nav-link"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="gastos.html" class="nav-link active"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
+                <li><a href="rendas.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
+                <li><a href="settings.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Gastos Fixos</h2>
+                    <button class="btn btn-primario" onclick="abrirModalGasto('fixo')">
+                        <i class="fas fa-plus"></i> Novo Gasto Fixo
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Valor</th>
+                                <th>Vencimento</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaGastosFixos"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Gastos Variáveis</h2>
+                    <button class="btn btn-primario" onclick="abrirModalGasto('variavel')">
+                        <i class="fas fa-plus"></i> Novo Gasto Variável
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Valor</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaGastosVariaveis"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Gastos por Categoria</h3>
+                    <div>
+                        <input type="month" id="mesGrafico" class="form-input" onchange="atualizarGraficos()">
+                    </div>
+                </div>
+                <canvas id="graficoGastosCategorias" class="grafico"></canvas>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Evolução dos Gastos</h3>
+                </div>
+                <canvas id="graficoEvolucaoGastos" class="grafico"></canvas>
+            </div>
+        </div>
+
+        <!-- Tabela de Gastos -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Lista de Gastos</h3>
+                <div class="filtro-container">
+                    <label for="filtroMes">Filtrar por mês:</label>
+                    <input type="month" id="filtroMes" class="form-input" onchange="filtrarGastosPorMes()">
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Valor</th>
+                            <th>Comprovante</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaGastos"></tbody>
+                </table>
+            </div>
+        </div>
+
+    <!-- Modal para adicionar/editar gasto -->
+    <div id="modalGasto" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTituloGasto">Novo Gasto</h3>
+                <span class="modal-close" onclick="fecharModalGasto()">&times;</span>
+            </div>
+            <form id="formGasto" onsubmit="salvarGasto(event)">
+                <input type="hidden" id="gastoId">
+                <input type="hidden" id="tipoGasto">
+                <div class="form-group">
+                    <label class="form-label" for="descricaoGasto">Descrição*</label>
+                    <input type="text" id="descricaoGasto" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="categoriaGasto">Categoria*</label>
+                        <select id="categoriaGasto" class="form-input" onchange="atualizarSubcategorias()" required>
+                        <option value="">Selecione uma categoria</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="subcategoriaGasto">Subcategoria*</label>
+                        <select id="subcategoriaGasto" class="form-input" required>
+                            <option value="">Selecione uma subcategoria</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="tipoGastoSelect">Tipo do Gasto*</label>
+                        <select id="tipoGastoSelect" class="form-input" required>
+                            <option value="">Selecione o tipo</option>
+                            <option value="pessoal">Pessoal</option>
+                            <option value="casa">Casa</option>
+                            <option value="outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="valorGasto">Valor*</label>
+                    <input type="number" id="valorGasto" class="form-input" step="0.01" required>
+                </div>
+                <div id="camposGastoFixo">
+                    <div class="form-group">
+                        <label class="form-label" for="vencimentoGasto">Dia do Vencimento*</label>
+                        <input type="number" id="vencimentoGasto" class="form-input" min="1" max="31">
+                    </div>
+                </div>
+                <div id="camposGastoVariavel" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label" for="dataGasto">Data*</label>
+                        <input type="date" id="dataGasto" class="form-input">
+                    </div>
+                </div>
+                <div class="form-group">
+                        <label for="comprovante">Comprovante:</label>
+                        <div class="upload-area" id="uploadArea">
+                            <input type="file" id="inputComprovante" accept="image/*" hidden>
+                            <div class="upload-info">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Arraste e solte a imagem aqui ou</p>
+                                <button type="button" class="btn btn-primary" onclick="document.getElementById('inputComprovante').click()">
+                                    Escolher Arquivo
+                                </button>
+                            </div>
+                            <div class="preview-area" id="previewArea" hidden>
+                                <img id="previewImage" src="" alt="Preview do comprovante">
+                                <button type="button" class="btn btn-danger btn-remover" onclick="removerImagem()">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                    <button type="submit" class="btn btn-primario">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                    <button type="button" class="btn btn-perigo" onclick="fecharModalGasto()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+        <!-- Modal de Visualização de Comprovante -->
+        <div id="modalVisualizarComprovante" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Visualizar Comprovante</h3>
+                    <button class="btn-fechar" onclick="fecharModal('modalVisualizarComprovante')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="comprovante-info">
+                        <p id="comprovanteDescricao"></p>
+                        <p id="comprovanteData"></p>
+                    </div>
+                    <div class="comprovante-imagem">
+                        <img id="comprovanteImagem" src="" alt="Comprovante">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação de Pagamento -->
+        <div id="modalPagamento" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirmar Pagamento</h3>
+                    <button class="btn-fechar" onclick="fecharModal('modalPagamento')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="pagamentoGastoId">
+                    <input type="hidden" id="pagamentoGastoTipo">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Descrição:</label>
+                        <p id="pagamentoDescricao" class="form-text"></p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Valor:</label>
+                        <p id="pagamentoValor" class="form-text"></p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="pagamentoBanco">Banco/Conta:</label>
+                        <select id="pagamentoBanco" class="form-input" required>
+                            <option value="">Selecione um banco</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="pagamentoMetodo">Método de Pagamento:</label>
+                        <select id="pagamentoMetodo" class="form-input" required>
+                            <option value="">Selecione um método</option>
+                            <option value="debito">Débito</option>
+                            <option value="credito">Cartão de Crédito</option>
+                            <option value="pix">PIX</option>
+                            <option value="boleto">Boleto</option>
+                            <option value="dinheiro">Dinheiro</option>
+                            <option value="transferencia">Transferência</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="pagamentoData">Data do Pagamento:</label>
+                        <input type="date" id="pagamentoData" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="pagamentoComprovante">Comprovante:</label>
+                        <div class="upload-area" id="uploadAreaPagamento">
+                            <input type="file" id="inputComprovantePagamento" accept="image/*" hidden>
+                            <div class="upload-info">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Arraste e solte a imagem aqui ou</p>
+                                <button type="button" class="btn btn-primary" onclick="document.getElementById('inputComprovantePagamento').click()">
+                                    Escolher Arquivo
+                                </button>
+                            </div>
+                            <div class="preview-area" id="previewAreaPagamento" hidden>
+                                <img id="previewImagePagamento" src="" alt="Preview do comprovante">
+                                <button type="button" class="btn btn-danger btn-remover" onclick="removerImagemPagamento()">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="fecharModal('modalPagamento')">Cancelar</button>
+                    <button class="btn btn-success" onclick="confirmarPagamento()">
+                        <i class="fas fa-check"></i> Confirmar Pagamento
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação de Recebimento -->
+        <div id="modalRecebimento" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirmar Recebimento</h3>
+                    <button class="btn-fechar" onclick="fecharModal('modalRecebimento')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="recebimentoRendaId">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Descrição:</label>
+                        <p id="recebimentoDescricao" class="form-text"></p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Valor:</label>
+                        <p id="recebimentoValor" class="form-text"></p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="recebimentoBanco">Destino (Banco/Conta):</label>
+                        <select id="recebimentoBanco" class="form-input" required>
+                            <option value="">Selecione um banco</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="recebimentoMetodo">Método de Recebimento:</label>
+                        <select id="recebimentoMetodo" class="form-input" required>
+                            <option value="">Selecione um método</option>
+                            <option value="pix">PIX</option>
+                            <option value="transferencia">Transferência</option>
+                            <option value="deposito">Depósito</option>
+                            <option value="dinheiro">Dinheiro</option>
+                            <option value="cheque">Cheque</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="recebimentoData">Data do Recebimento:</label>
+                        <input type="date" id="recebimentoData" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="recebimentoComprovante">Comprovante:</label>
+                        <div class="upload-area" id="uploadAreaRecebimento">
+                            <input type="file" id="inputComprovanteRecebimento" accept="image/*" hidden>
+                            <div class="upload-info">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Arraste e solte a imagem aqui ou</p>
+                                <button type="button" class="btn btn-primary" onclick="document.getElementById('inputComprovanteRecebimento').click()">
+                                    Escolher Arquivo
+                                </button>
+                            </div>
+                            <div class="preview-area" id="previewAreaRecebimento" hidden>
+                                <img id="previewImageRecebimento" src="" alt="Preview do comprovante">
+                                <button type="button" class="btn btn-danger btn-remover" onclick="removerImagemRecebimento()">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="fecharModal('modalRecebimento')">Cancelar</button>
+                    <button class="btn btn-success" onclick="confirmarRecebimento()">
+                        <i class="fas fa-check"></i> Confirmar Recebimento
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
+    </footer>
+
+    <!-- Carregar scripts sem usar módulos ES6 -->
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/gastos.js"></script>
+</body>
+</html> 

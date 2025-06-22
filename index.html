@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Finnairaceora</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <div class="nav-logo">
+                <i class="fas fa-wallet"></i> Finnairaceora
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link active"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="pages/bancos.html" class="nav-link"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="pages/cartoes.html" class="nav-link"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="pages/gastos.html" class="nav-link"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
+                <li><a href="pages/rendas.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
+                <li><a href="pages/settings.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+                <li class="nav-notifications">
+                    <button class="btn-notifications" onclick="toggleNotifications()">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationCount">0</span>
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Painel de Notificações -->
+            <div id="notificationsPanel" class="notifications-panel">
+                <div class="notifications-header">
+                    <h3>Notificações</h3>
+                    <div class="notifications-actions">
+                        <button class="btn-link" onclick="marcarTodasComoLidas()">
+                            Marcar todas como lidas
+                        </button>
+                        <span class="modal-close" onclick="toggleNotifications()">&times;</span>
+                    </div>
+                </div>
+                <div class="notifications-content" id="notificationsList">
+                    <!-- As notificações serão inseridas aqui -->
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- Resumo do Mês -->
+        <div class="card mb-1">
+            <div class="card-header">
+                <h2>Resumo do Mês</h2>
+                <div class="mes-selector">
+                    <button onclick="mudarMes(-1)"><i class="fas fa-chevron-left"></i></button>
+                    <span id="mesSelecionado">Março 2024</span>
+                    <button onclick="mudarMes(1)"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <!-- Saldos e Cartões -->
+                <div>
+                    <!-- Saldos em Bancos -->
+                    <div class="info-section">
+                        <h3>Saldos em Bancos</h3>
+                        <div id="listaBancos" class="info-list"></div>
+                        <div class="info-total">
+                            <span>Total em Bancos:</span>
+                            <span id="totalBancos" class="positive">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <!-- Faturas de Cartões -->
+                    <div class="info-section">
+                        <h3>Faturas de Cartões</h3>
+                        <div id="listaCartoes" class="info-list"></div>
+                        <div class="info-total">
+                            <span>Total em Faturas:</span>
+                            <span id="totalFaturas" class="negative">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gastos e Rendas -->
+                <div>
+                    <!-- Gastos Fixos -->
+                    <div class="info-section">
+                        <h3>Gastos Fixos do Mês</h3>
+                        <div id="listaGastosFixos" class="info-list"></div>
+                        <div class="info-total">
+                            <span>Total Gastos Fixos:</span>
+                            <span id="totalGastosFixos" class="negative">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <!-- Rendas Previstas -->
+                    <div class="info-section">
+                        <h3>Rendas Previstas</h3>
+                        <div id="listaRendas" class="info-list"></div>
+                        <div class="info-total">
+                            <span>Total Rendas:</span>
+                            <span id="totalRendas" class="positive">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo Final -->
+            <div class="resumo-final">
+                <h3>Balanço do Mês</h3>
+                <div class="grid grid-2">
+                    <div class="resumo-coluna">
+                        <div class="resumo-item">
+                            <span>Saldo Atual:</span>
+                            <span id="saldoAtual" class="positive">R$ 0,00</span>
+                        </div>
+                        <div class="resumo-item">
+                            <span>Rendas a Receber:</span>
+                            <span id="rendasReceber" class="positive">R$ 0,00</span>
+                        </div>
+                    </div>
+                    <div class="resumo-coluna">
+                        <div class="resumo-item">
+                            <span>Faturas e Gastos:</span>
+                            <span id="totalDividas" class="negative">R$ 0,00</span>
+                        </div>
+                        <div class="resumo-item">
+                            <span>Saldo Previsto:</span>
+                            <span id="saldoPrevisto" class="highlight">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metas de Gastos -->
+            <div class="metas-gastos">
+                <h3>Metas de Gastos do Mês</h3>
+                <div id="metasGastosContainer" class="grid grid-2">
+                    <!-- As metas de gastos serão inseridas aqui dinamicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Metas de Renda -->
+        <div class="metas-rendas mt-2">
+            <h3>Metas de Renda do Mês</h3>
+            <div id="metasRendasContainer" class="grid grid-2">
+                <!-- As metas de renda serão inseridas aqui dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Gastos vs. Rendas</h3>
+                </div>
+                <canvas id="graficoGastosRendas" class="grafico"></canvas>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>Distribuição de Gastos</h3>
+                </div>
+                <canvas id="graficoDistribuicaoGastos" class="grafico"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Últimos Gastos</h3>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaUltimosGastos"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Últimas Rendas</h3>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaUltimasRendas"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de Pagamento -->
+        <div id="modalPagamento" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirmar Pagamento</h3>
+                    <span class="modal-close" onclick="fecharModal('modalPagamento')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>Deseja confirmar o pagamento da fatura do cartão <span id="nomeCartao"></span>?</p>
+                    <div class="form-group">
+                        <label class="form-label" for="dataPagamento">Data do Pagamento:</label>
+                        <input type="date" id="dataPagamento" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bancoSelecionado">Banco:</label>
+                        <select id="bancoSelecionado" class="form-input" required>
+                            <option value="">Selecione um banco</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="valorPagamento">Valor:</label>
+                        <input type="number" id="valorPagamento" class="form-input" step="0.01" required>
+                    </div>
+                    <input type="hidden" id="cartaoId">
+                    <div class="form-group mt-2">
+                        <button id="btnConfirmarPagamento" class="btn btn-primario">
+                            <i class="fas fa-check"></i> Confirmar
+                        </button>
+                        <button class="btn btn-perigo" onclick="fecharModal('modalPagamento')">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Pagamento de Gasto Fixo -->
+        <div id="modalPagamentoGasto" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirmar Pagamento</h3>
+                    <span class="modal-close" onclick="fecharModal('modalPagamentoGasto')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>Deseja confirmar o pagamento do gasto <span id="nomeGasto"></span>?</p>
+                    <div class="form-group">
+                        <label class="form-label" for="dataPagamentoGasto">Data do Pagamento:</label>
+                        <input type="date" id="dataPagamentoGasto" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bancoSelecionadoGasto">Banco:</label>
+                        <select id="bancoSelecionadoGasto" class="form-input" required>
+                            <option value="">Selecione um banco</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="valorPagamentoGasto">Valor:</label>
+                        <input type="number" id="valorPagamentoGasto" class="form-input" step="0.01" required>
+                    </div>
+                    <input type="hidden" id="gastoId">
+                    <div class="form-group mt-2">
+                        <button id="btnConfirmarPagamentoGasto" class="btn btn-primario">
+                            <i class="fas fa-check"></i> Confirmar
+                        </button>
+                        <button class="btn btn-perigo" onclick="fecharModal('modalPagamentoGasto')">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Recebimento -->
+        <div id="modalRecebimento" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirmar Recebimento</h3>
+                    <span class="modal-close" onclick="fecharModal('modalRecebimento')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>Deseja confirmar o recebimento da renda <span id="nomeRenda"></span>?</p>
+                    <div class="form-group">
+                        <label class="form-label" for="dataRecebimento">Data do Recebimento:</label>
+                        <input type="date" id="dataRecebimento" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bancoSelecionadoRecebimento">Banco:</label>
+                        <select id="bancoSelecionadoRecebimento" class="form-input" required>
+                            <option value="">Selecione um banco</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="valorRecebimento">Valor:</label>
+                        <input type="number" id="valorRecebimento" class="form-input" step="0.01" required>
+                    </div>
+                    <input type="hidden" id="rendaId">
+                    <input type="hidden" id="tipoRenda">
+                    <div class="form-group mt-2">
+                        <button id="btnConfirmarRecebimento" class="btn btn-primario">
+                            <i class="fas fa-check"></i> Confirmar
+                        </button>
+                        <button class="btn btn-perigo" onclick="fecharModal('modalRecebimento')">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Comprovante -->
+    <div id="modalComprovante" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Anexar Comprovante</h3>
+                <span class="modal-close" onclick="fecharModal('modalComprovante')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="inputComprovante" accept="image/*" hidden>
+                    <div class="upload-info">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Arraste e solte a imagem aqui ou</p>
+                                        <button class="btn btn-primario" onclick="document.getElementById('inputComprovante').click()">
+                    Escolher Arquivo
+                </button>
+                    </div>
+                    <div class="preview-area" id="previewArea" hidden>
+                        <img id="previewImage" src="" alt="Preview do comprovante">
+                        <button class="btn btn-perigo btn-remover" onclick="removerImagem()">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="descricaoComprovante">Descrição (opcional):</label>
+                    <input type="text" id="descricaoComprovante" class="form-input" 
+                           placeholder="Ex: Pagamento fatura cartão Nubank">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="fecharModal('modalComprovante')">Cancelar</button>
+                <button class="btn btn-primario" onclick="salvarComprovante()">
+                    <i class="fas fa-save"></i>
+                    Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
+    </footer>
+
+    <!-- Carregar scripts sem usar módulos ES6 -->
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/database.js"></script>
+    <script src="assets/js/dashboard.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/notifications.js"></script>
+    <script>
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarDados();
+            
+            const hoje = new Date();
+            const anoAtual = hoje.getFullYear();
+            const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
+            
+            const mesGraficoElement = document.getElementById('mesGrafico');
+            if (mesGraficoElement) {
+                mesGraficoElement.value = `${anoAtual}-${mesAtual}`;
+            }
+            
+            atualizarGraficos();
+            
+            inicializarModais();
+            carregarMetasGastos();
+            carregarMetasRenda();
+        });
+
+        function carregarMetasRenda() {
+            const container = document.getElementById('metasRendasContainer');
+            const metas = JSON.parse(localStorage.getItem('metas_rendas')) || {};
+            const categorias = db.getAll('categorias_rendas') || [];
+            
+            // Busca todas as rendas recebidas (com status 'Recebido')
+            const rendas = db.getAll('rendas') || [];
+            const rendasRecebidas = rendas.filter(r => r.status === 'Recebido');
+
+            container.innerHTML = '';
+            const metasIds = Object.keys(metas);
+
+            if (metasIds.length === 0) {
+                container.innerHTML = '<p class="text-center col-span-2">Nenhuma meta de renda definida. Adicione na página de Configurações.</p>';
+                return;
+            }
+
+            metasIds.forEach(categoriaId => {
+                const categoria = categorias.find(c => c.id == categoriaId);
+                if (!categoria) return;
+
+                const metaValor = metas[categoriaId];
+                const rendasDaCategoria = rendasRecebidas.filter(r => r.categoriaId == categoriaId);
+                const totalRecebido = rendasDaCategoria.reduce((acc, renda) => acc + renda.valor, 0);
+                const percentual = metaValor > 0 ? (totalRecebido / metaValor) * 100 : 0;
+
+                const metaCard = `
+                    <div class="meta-card">
+                        <div class="meta-header">
+                            <i class="${categoria.icone || 'fas fa-dollar-sign'}"></i>
+                            <h4>${categoria.nome}</h4>
+                        </div>
+                        <div class="meta-valor">
+                            <span>Meta:</span>
+                            <span class="meta-limite positive">${Utils.formatarMoeda(metaValor)}</span>
+                        </div>
+                        <div class="meta-progresso">
+                            <div class="barra-progresso">
+                                <div class="progresso positive-bg" style="width: ${percentual > 100 ? 100 : percentual}%"></div>
+                            </div>
+                            <div class="meta-info">
+                                <span class="positive">${Utils.formatarMoeda(totalRecebido)}</span>
+                                <span>${percentual.toFixed(0)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += metaCard;
+            });
+        }
+
+        function carregarMetasGastos() {
+            const container = document.getElementById('metasGastosContainer');
+            let metas = JSON.parse(localStorage.getItem('metas_gastos'));
+            
+            if (!metas) {
+                metas = [
+                    { id: 1, nome: 'Gastos Pessoais', icone: 'fas fa-user', valor: 300.00 },
+                    { id: 2, nome: 'Gastos Casa', icone: 'fas fa-home', valor: 1500.00 }
+                ];
+                localStorage.setItem('metas_gastos', JSON.stringify(metas));
+            }
+
+            const gastos = db.getAll('gastos_variaveis') || []; 
+            
+            container.innerHTML = ''; 
+
+            if (metas.length === 0) {
+                container.innerHTML = '<p class="text-center col-span-2">Nenhuma meta definida. Adicione na página de Configurações.</p>';
+                return;
+            }
+
+            metas.forEach(meta => {
+                const nomeMetaNormalizado = meta.nome.toLowerCase().replace('gastos ', '');
+                
+                const gastosDaMeta = gastos.filter(g => {
+                    const categoria = db.getById('categorias_gastos', g.categoriaId);
+                    return categoria && categoria.nome.toLowerCase().includes(nomeMetaNormalizado);
+                });
+
+                const totalGasto = gastosDaMeta.reduce((acc, gasto) => acc + gasto.valor, 0);
+                const percentual = meta.valor > 0 ? (totalGasto / meta.valor) * 100 : 0;
+
+                const metaCard = `
+                    <div class="meta-card">
+                        <div class="meta-header">
+                            <i class="${meta.icone || 'fas fa-star'}"></i>
+                            <h4>${meta.nome}</h4>
+                        </div>
+                        <div class="meta-valor">
+                            <span>Meta:</span>
+                            <span class="meta-limite">${Utils.formatarMoeda(meta.valor)}</span>
+                        </div>
+                        <div class="meta-progresso">
+                            <div class="barra-progresso">
+                                <div class="progresso" style="width: ${percentual > 100 ? 100 : percentual}%"></div>
+                            </div>
+                            <div class="meta-info">
+                                <span>${Utils.formatarMoeda(totalGasto)}</span>
+                                <span>${percentual.toFixed(0)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += metaCard;
+            });
+        }
+    </script>
+</body>
+</html>

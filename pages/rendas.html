@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rendas - Finnairaceora</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Garantir que o modal seja exibido corretamente */
+        .modal.active {
+            display: flex !important;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <div class="nav-logo">
+                <i class="fas fa-wallet"></i> Finnairaceora
+            </div>
+            <ul class="nav-menu">
+                <li><a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="bancos.html" class="nav-link"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="cartoes.html" class="nav-link"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="gastos.html" class="nav-link"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
+                <li><a href="rendas.html" class="nav-link active"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
+                <li><a href="settings.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Rendas Fixas</h2>
+                    <button class="btn btn-primario" onclick="abrirModalRenda('fixa')">
+                        <i class="fas fa-plus"></i> Nova Renda Fixa
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Valor</th>
+                                <th>Recebimento</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaRendasFixas"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Rendas Variáveis</h2>
+                    <button class="btn btn-primario" onclick="abrirModalRenda('variavel')">
+                        <i class="fas fa-plus"></i> Nova Renda Variável
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Data Prevista</th>
+                                <th>Descrição</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaRendasVariaveis"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Rendas por Categoria</h3>
+                    <div>
+                        <input type="month" id="mesGrafico" class="form-input" onchange="atualizarGraficos()">
+                    </div>
+                </div>
+                <canvas id="graficoRendasCategorias" class="grafico"></canvas>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Evolução das Rendas</h3>
+                </div>
+                <canvas id="graficoEvolucaoRendas" class="grafico"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para adicionar/editar renda -->
+    <div id="modalRenda" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTituloRenda">Nova Renda</h3>
+                <span class="modal-close" onclick="fecharModalRenda()">&times;</span>
+            </div>
+            <form id="formRenda" onsubmit="salvarRenda(event)">
+                <input type="hidden" id="rendaId">
+                <input type="hidden" id="tipoRenda">
+                <div class="form-group">
+                    <label class="form-label" for="descricaoRenda">Descrição*</label>
+                    <input type="text" id="descricaoRenda" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="categoriaRenda">Categoria*</label>
+                    <select id="categoriaRenda" class="form-input" required onchange="configurarDiaRecebimento()">
+                        <option value="">Selecione uma categoria</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="valorRenda">Valor*</label>
+                    <input type="number" id="valorRenda" class="form-input" step="0.01" required>
+                </div>
+                <div id="camposRendaFixa">
+                    <div class="form-group">
+                        <label class="form-label" for="recebimentoRenda">Dia do Recebimento*</label>
+                        <input type="number" id="recebimentoRenda" class="form-input" min="1" max="31">
+                    </div>
+                </div>
+                <div id="camposRendaVariavel" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label" for="dataRenda">Data da Primeira Parcela*</label>
+                        <input type="date" id="dataRenda" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="parcelasRenda">Número de Parcelas</label>
+                        <input type="number" id="parcelasRenda" class="form-input" min="1" value="1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primario">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                    <button type="button" class="btn btn-perigo" onclick="fecharModalRenda()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Confirmação de Recebimento -->
+    <div id="modalConfirmarRecebimento" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirmar Recebimento</h3>
+                <span class="modal-close" onclick="fecharModal('modalConfirmarRecebimento')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Confirme o recebimento de <strong id="descricaoRecebimento"></strong> no valor de <strong id="valorRecebimento"></strong>.</p>
+                <div class="form-group">
+                    <label class="form-label" for="bancoRecebimento">Receber em:</label>
+                    <select id="bancoRecebimento" class="form-input" required>
+                        <option value="">Selecione um banco</option>
+                    </select>
+                </div>
+                <input type="hidden" id="rendaRecebimentoId">
+                 <div class="form-group mt-2">
+                    <button id="btnConfirmarRecebimento" class="btn btn-primario">
+                        <i class="fas fa-check"></i> Confirmar
+                    </button>
+                    <button type="button" class="btn btn-perigo" onclick="fecharModal('modalConfirmarRecebimento')">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
+    </footer>
+
+    <!-- Carregar scripts sem usar módulos ES6 -->
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/database.js"></script>
+    <script>
+        // Variáveis globais para os gráficos
+        let graficoRendasCategorias = null;
+        let graficoEvolucaoRendas = null;
+
+        // Funções para rendas
+        function abrirModalRenda(tipo, id = null) {
+            const modal = document.getElementById('modalRenda');
+            const titulo = document.getElementById('modalTituloRenda');
+            const form = document.getElementById('formRenda');
+            const camposFixa = document.getElementById('camposRendaFixa');
+            const camposVariavel = document.getElementById('camposRendaVariavel');
+            
+            form.reset();
+            document.getElementById('rendaId').value = '';
+            document.getElementById('tipoRenda').value = tipo;
+            
+            if (tipo === 'fixa') {
+                titulo.textContent = 'Nova Renda Fixa';
+                camposFixa.style.display = 'block';
+                camposVariavel.style.display = 'none';
+            } else {
+                titulo.textContent = 'Nova Renda Variável';
+                camposFixa.style.display = 'none';
+                camposVariavel.style.display = 'block';
+                document.getElementById('dataRenda').valueAsDate = new Date();
+                document.getElementById('parcelasRenda').value = 1;
+            }
+            
+            if (id) {
+                const renda = db.getAll('rendas').find(r => r.id === id);
+                if(renda) {
+                    titulo.textContent = `Editar Renda ${tipo === 'fixa' ? 'Fixa' : 'Variável'}`;
+                    document.getElementById('rendaId').value = renda.id;
+                    document.getElementById('descricaoRenda').value = renda.descricao;
+                    document.getElementById('categoriaRenda').value = renda.categoria;
+                    document.getElementById('valorRenda').value = renda.valor;
+
+                    if(tipo === 'fixa') {
+                        document.getElementById('recebimentoRenda').value = renda.diaRecebimento;
+                    } else {
+                        document.getElementById('dataRenda').value = renda.data;
+                        document.getElementById('parcelasRenda').value = renda.parcelas || 1;
+                        document.getElementById('parcelasRenda').disabled = true; // Não permite editar parcelas
+                    }
+                }
+            } else {
+                 document.getElementById('parcelasRenda').disabled = false;
+            }
+            
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        }
+
+        function fecharModalRenda() {
+            const modal = document.getElementById('modalRenda');
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+
+        // Função para configurar o dia de recebimento com base na categoria
+        function configurarDiaRecebimento() {
+            const categoria = document.getElementById('categoriaRenda').value;
+            const tipoRenda = document.getElementById('tipoRenda').value;
+            
+            // Só configura automaticamente para rendas fixas
+            if (tipoRenda !== 'fixa') return;
+            
+            const recebimentoInput = document.getElementById('recebimentoRenda');
+            
+            if (categoria === 'Salário') {
+                // Configurar para o 5º dia útil
+                recebimentoInput.value = 5;
+                recebimentoInput.setAttribute('data-regra', 'dia-util');
+                
+                // Mostrar mensagem informativa
+                Utils.mostrarMensagem('Configurado para o 5º dia útil do mês', 'info');
+            } 
+            else if (categoria === 'Quinzena') {
+                // Configurar para o dia 15
+                recebimentoInput.value = 15;
+                recebimentoInput.setAttribute('data-regra', 'dia-util-se-fds');
+                
+                // Mostrar mensagem informativa
+                Utils.mostrarMensagem('Configurado para o dia 15 ou próximo dia útil', 'info');
+            }
+            else {
+                // Remover regras especiais
+                recebimentoInput.removeAttribute('data-regra');
+            }
+        }
+
+        function salvarRenda(event) {
+            event.preventDefault();
+            const id = document.getElementById('rendaId').value;
+            const tipo = document.getElementById('tipoRenda').value;
+            
+            if (tipo === 'variavel' && !id) {
+                salvarRendaParcelada();
+            } else {
+                salvarRendaUnica(id);
+            }
+        }
+
+        function salvarRendaUnica(id) {
+            const tipo = document.getElementById('tipoRenda').value;
+            const categoriaSelect = document.getElementById('categoriaRenda');
+            const rendaData = {
+                descricao: document.getElementById('descricaoRenda').value,
+                categoriaId: categoriaSelect.value,
+                categoria: categoriaSelect.options[categoriaSelect.selectedIndex].text,
+                valor: parseFloat(document.getElementById('valorRenda').value),
+                tipo: tipo,
+            };
+
+            if (tipo === 'fixa') {
+                rendaData.diaRecebimento = parseInt(document.getElementById('recebimentoRenda').value);
+            } else {
+                rendaData.data = document.getElementById('dataRenda').value;
+                rendaData.status = 'Pendente';
+            }
+
+            if (id) {
+                db.update('rendas', Number(id), rendaData);
+                Utils.mostrarMensagem('Renda atualizada com sucesso!', 'sucesso');
+            } else {
+                db.insert('rendas', rendaData);
+                Utils.mostrarMensagem('Renda salva com sucesso!', 'sucesso');
+            }
+
+            fecharModalRenda();
+            carregarTabelas();
+            atualizarGraficos();
+        }
+
+        function salvarRendaParcelada() {
+            const descricaoBase = document.getElementById('descricaoRenda').value;
+            const valorTotal = parseFloat(document.getElementById('valorRenda').value);
+            const numParcelas = parseInt(document.getElementById('parcelasRenda').value) || 1;
+            const dataPrimeiraParcela = new Date(document.getElementById('dataRenda').value + 'T00:00:00');
+            const categoriaSelect = document.getElementById('categoriaRenda');
+
+            const valorParcela = valorTotal / numParcelas;
+
+            for (let i = 0; i < numParcelas; i++) {
+                const dataParcela = new Date(dataPrimeiraParcela.getFullYear(), dataPrimeiraParcela.getMonth() + i, dataPrimeiraParcela.getDate());
+                
+                const rendaData = {
+                    descricao: `${descricaoBase} (${i + 1}/${numParcelas})`,
+                    categoriaId: categoriaSelect.value,
+                    categoria: categoriaSelect.options[categoriaSelect.selectedIndex].text,
+                    valor: valorParcela,
+                    tipo: 'variavel',
+                    data: dataParcela.toISOString().split('T')[0],
+                    status: 'Pendente',
+                    parcelaInfo: {
+                        originalId: Date.now(),
+                        parcelaAtual: i + 1,
+                        totalParcelas: numParcelas
+                    }
+                };
+                db.insert('rendas', rendaData);
+            }
+            Utils.mostrarMensagem(`Renda parcelada em ${numParcelas}x salva com sucesso!`, 'sucesso');
+            fecharModalRenda();
+            carregarTabelas();
+            atualizarGraficos();
+        }
+
+        function carregarTabelas() {
+            carregarRendasFixas();
+            carregarRendasVariaveis();
+        }
+
+        function carregarRendasFixas() {
+            const rendas = db.getAll('rendas_fixas');
+            const tbody = document.getElementById('tabelaRendasFixas');
+            tbody.innerHTML = '';
+
+            const hoje = new Date();
+            const mesAtual = hoje.getMonth();
+            const anoAtual = hoje.getFullYear();
+            const diaAtual = hoje.getDate();
+
+            rendas.forEach(renda => {
+                const tr = document.createElement('tr');
+                
+                // Calcular a data real de recebimento com base nas regras
+                const dataRecebimento = obterDataRealRecebimento(renda, mesAtual, anoAtual);
+                const diaRecebimento = dataRecebimento.getDate();
+                
+                // Determinar o status com base na data real de recebimento
+                const status = diaAtual > diaRecebimento ? 'status-atrasado' : 'status-pendente';
+                
+                // Determinar o texto de recebimento com base nas regras
+                let textoRecebimento = `Todo dia ${renda.recebimento}`;
+                
+                if (renda.regraRecebimento === 'dia-util' && renda.descricaoRegra) {
+                    textoRecebimento = `${renda.descricaoRegra} (dia ${diaRecebimento})`;
+                } 
+                else if (renda.regraRecebimento === 'dia-util-se-fds' && renda.descricaoRegra) {
+                    textoRecebimento = `${renda.descricaoRegra} (dia ${diaRecebimento})`;
+                }
+                
+                tr.innerHTML = `
+                    <td>${renda.descricao}</td>
+                    <td>${renda.categoria}</td>
+                    <td class="positive">${Utils.formatarMoeda(renda.valor)}</td>
+                    <td>${textoRecebimento}</td>
+                    <td><span class="${status}">${status === 'status-atrasado' ? 'Atrasado' : 'Pendente'}</span></td>
+                    <td>
+                        <button class="btn btn-primario" onclick="editarRenda('${renda.id}', 'fixa')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-perigo" onclick="excluirRenda('${renda.id}', 'fixa')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function carregarRendasVariaveis() {
+            const rendas = db.getAll('rendas').filter(r => r.tipo === 'variavel');
+            const tbody = document.getElementById('tabelaRendasVariaveis');
+            tbody.innerHTML = '';
+
+            rendas.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+            rendas.forEach(renda => {
+                const tr = document.createElement('tr');
+                let statusBadge;
+                let acoes;
+
+                if (renda.status === 'Recebido') {
+                    statusBadge = `<span class="badge badge-sucesso">Recebido</span>`;
+                    acoes = `
+                        <button class="btn btn-sm btn-perigo" onclick="excluirRenda(${renda.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>`;
+                } else {
+                    statusBadge = `<span class="badge badge-pendente">Pendente</span>`;
+                    acoes = `
+                        <button class="btn btn-sm btn-sucesso" onclick="abrirModalConfirmacao(${renda.id})">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="btn btn-sm btn-primario" onclick="abrirModalRenda('variavel', ${renda.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-perigo" onclick="excluirRenda(${renda.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>`;
+                }
+
+                tr.innerHTML = `
+                    <td>${Utils.formatarData(new Date(renda.data))}</td>
+                    <td>${renda.descricao}</td>
+                    <td class="positive">${Utils.formatarMoeda(renda.valor)}</td>
+                    <td>${statusBadge}</td>
+                    <td>${acoes}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function abrirModalConfirmacao(id) {
+            const renda = db.getAll('rendas').find(r => r.id === id);
+            if (!renda) return;
+
+            document.getElementById('descricaoRecebimento').textContent = renda.descricao;
+            document.getElementById('valorRecebimento').textContent = Utils.formatarMoeda(renda.valor);
+            document.getElementById('rendaRecebimentoId').value = id;
+
+            const selectBanco = document.getElementById('bancoRecebimento');
+            const bancos = db.getAll('bancos');
+            selectBanco.innerHTML = '<option value="">Selecione um banco</option>';
+            bancos.forEach(banco => {
+                selectBanco.innerHTML += `<option value="${banco.id}">${banco.nome}</option>`;
+            });
+
+            const modal = document.getElementById('modalConfirmarRecebimento');
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        }
+        
+        function confirmarRecebimento() {
+            const rendaId = parseInt(document.getElementById('rendaRecebimentoId').value);
+            const bancoId = parseInt(document.getElementById('bancoRecebimento').value);
+            
+            if (!bancoId) {
+                Utils.mostrarMensagem('Selecione um banco para confirmar o recebimento.', 'erro');
+                return;
+            }
+
+            // Busca a renda pelo ID
+            const rendas = db.getAll('rendas');
+            const renda = rendas.find(r => r.id === rendaId);
+
+            if (!renda) {
+                Utils.mostrarMensagem('Renda não encontrada.', 'erro');
+                return;
+            }
+
+            // Atualiza o status da renda para 'Recebido'
+            renda.status = 'Recebido';
+            renda.bancoId = bancoId;
+            renda.dataRecebimento = new Date().toISOString().split('T')[0];
+
+            // Atualiza a renda no banco de dados
+            db.update('rendas', rendaId, renda);
+
+            // Fecha o modal
+            fecharModal('modalConfirmarRecebimento');
+
+            // Recarrega as tabelas e atualiza os gráficos
+            carregarTabelas();
+            atualizarGraficos();
+
+            // Atualiza as metas de renda no dashboard
+            if (window.carregarMetasRenda) {
+                window.carregarMetasRenda();
+            }
+
+            Utils.mostrarMensagem('Recebimento confirmado com sucesso!', 'sucesso');
+        }
+
+        function fecharModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+
+        function excluirRenda(id) {
+             if (confirm('Tem certeza que deseja excluir esta renda?')) {
+                db.delete('rendas', id);
+                carregarTabelas();
+                atualizarGraficos();
+                Utils.mostrarMensagem('Renda excluída com sucesso!', 'sucesso');
+            }
+        }
+
+        function atualizarGraficos() {
+            const mesSelecionado = document.getElementById('mesGrafico').value;
+            const [ano, mes] = mesSelecionado.split('-');
+            const primeiroDia = new Date(ano, mes - 1, 1);
+            const ultimoDia = new Date(ano, mes, 0);
+
+            // Gráfico de rendas por categoria
+            const rendasFixas = db.getAll('rendas_fixas');
+            const rendasVariaveis = db.getAll('rendas_variaveis')
+                .filter(renda => {
+                    const data = new Date(renda.data);
+                    return data >= primeiroDia && data <= ultimoDia;
+                });
+
+            const categorias = {};
+            [...rendasFixas, ...rendasVariaveis].forEach(renda => {
+                if (categorias[renda.categoria]) {
+                    categorias[renda.categoria] += Number(renda.valor);
+                } else {
+                    categorias[renda.categoria] = Number(renda.valor);
+                }
+            });
+
+            if (graficoRendasCategorias) {
+                graficoRendasCategorias.destroy();
+            }
+
+            const ctx1 = document.getElementById('graficoRendasCategorias').getContext('2d');
+            graficoRendasCategorias = new Chart(ctx1, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(categorias),
+                    datasets: [{
+                        data: Object.values(categorias),
+                        backgroundColor: [
+                            '#2ECC71', '#3498DB', '#9B59B6', '#F1C40F', '#E67E22'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: `Rendas por Categoria - ${mesSelecionado}`
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de evolução das rendas
+            const ultimosMeses = [];
+            const valoresMeses = [];
+            
+            for (let i = 5; i >= 0; i--) {
+                const dataRef = new Date();
+                dataRef.setMonth(dataRef.getMonth() - i);
+                const anoRef = dataRef.getFullYear();
+                const mesRef = dataRef.getMonth() + 1;
+                
+                const primeiroDiaMes = new Date(anoRef, mesRef - 1, 1);
+                const ultimoDiaMes = new Date(anoRef, mesRef, 0);
+                
+                const rendasVariaveisMes = db.getAll('rendas_variaveis')
+                    .filter(renda => {
+                        const data = new Date(renda.data);
+                        return data >= primeiroDiaMes && data <= ultimoDiaMes;
+                    });
+                
+                const totalMes = rendasVariaveisMes.reduce((acc, renda) => acc + Number(renda.valor), 0) +
+                                rendasFixas.reduce((acc, renda) => acc + Number(renda.valor), 0);
+                
+                ultimosMeses.push(`${mesRef}/${anoRef}`);
+                valoresMeses.push(totalMes);
+            }
+            
+            if (graficoEvolucaoRendas) {
+                graficoEvolucaoRendas.destroy();
+            }
+            
+            const ctx2 = document.getElementById('graficoEvolucaoRendas').getContext('2d');
+            graficoEvolucaoRendas = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: ultimosMeses,
+                    datasets: [{
+                        label: 'Total de Rendas',
+                        data: valoresMeses,
+                        borderColor: '#2ECC71',
+                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Evolução das Rendas nos Últimos 6 Meses'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('mesGrafico').value = new Date().toISOString().slice(0, 7);
+            carregarTabelas();
+            atualizarGraficos();
+
+            document.getElementById('btnConfirmarRecebimento').addEventListener('click', confirmarRecebimento);
+
+            // Carregar categorias de renda
+            carregarCategoriasRenda();
+        });
+
+        function carregarCategoriasRenda() {
+            const selectCategoria = document.getElementById('categoriaRenda');
+            selectCategoria.innerHTML = '<option value="">Selecione uma categoria</option>';
+
+            const categorias = db.getAll('categorias_rendas') || [];
+            
+            categorias.forEach(categoria => {
+                const option = document.createElement('option');
+                option.value = categoria.id;
+                option.textContent = categoria.nome;
+                option.setAttribute('data-icone', categoria.icone);
+                selectCategoria.appendChild(option);
+            });
+        }
+
+        // Funções utilitárias para cálculo de dias úteis
+        function isDiaUtil(data) {
+            const diaSemana = data.getDay();
+            // 0 = domingo, 6 = sábado
+            return diaSemana !== 0 && diaSemana !== 6;
+        }
+
+        function calcularQuintoDiaUtil(mes, ano) {
+            let data = new Date(ano, mes, 1);
+            let diasUteisContados = 0;
+            
+            while (diasUteisContados < 5) {
+                if (isDiaUtil(data)) {
+                    diasUteisContados++;
+                }
+                
+                if (diasUteisContados < 5) {
+                    data.setDate(data.getDate() + 1);
+                }
+            }
+            
+            return data;
+        }
+
+        function calcularProximoDiaUtil(data) {
+            const novaData = new Date(data);
+            
+            while (!isDiaUtil(novaData)) {
+                novaData.setDate(novaData.getDate() + 1);
+            }
+            
+            return novaData;
+        }
+
+        // Função para obter a data real de recebimento com base nas regras
+        function obterDataRealRecebimento(renda, mes, ano) {
+            // Se não tiver regra especial, usa o dia fixo
+            if (!renda.regraRecebimento) {
+                return new Date(ano, mes, renda.recebimento);
+            }
+            
+            // Regra do 5º dia útil
+            if (renda.regraRecebimento === 'dia-util') {
+                return calcularQuintoDiaUtil(mes, ano);
+            }
+            
+            // Regra do dia 15 ou próximo dia útil
+            if (renda.regraRecebimento === 'dia-util-se-fds') {
+                const data = new Date(ano, mes, renda.recebimento);
+                
+                // Se não for dia útil, retorna o próximo dia útil
+                if (!isDiaUtil(data)) {
+                    return calcularProximoDiaUtil(data);
+                }
+                
+                return data;
+            }
+            
+            // Caso padrão
+            return new Date(ano, mes, renda.recebimento);
+        }
+    </script>
+</body>
+</html> 

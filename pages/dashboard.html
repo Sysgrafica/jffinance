@@ -1,0 +1,190 @@
+<!-- Conteúdo principal -->
+<div class="content">
+    <h1>Dashboard</h1>
+
+    <!-- Resumo do mês -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Resumo do Mês</h2>
+            <div class="mes-selector">
+                <button id="mesAnterior" class="btn btn-outline"><i class="fas fa-chevron-left"></i></button>
+                <span id="mesSelecionado">Carregando...</span>
+                <button id="mesProximo" class="btn btn-outline"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Bancos -->
+            <div class="info-section">
+                <div class="info-header">
+                    <h3>Bancos</h3>
+                    <span id="totalBancos">R$ 0,00</span>
+                </div>
+                <div id="listaBancos" class="info-list"></div>
+            </div>
+
+            <!-- Faturas -->
+            <div class="info-section">
+                <div class="info-header">
+                    <h3>Faturas</h3>
+                    <span id="totalFaturas">R$ 0,00</span>
+                </div>
+                <div id="detalheFaturas" class="info-detalhe-container"></div>
+                <div id="listaCartoes" class="info-list"></div>
+            </div>
+
+            <!-- Gastos Fixos -->
+            <div class="info-section">
+                <div class="info-header">
+                    <h3>Gastos Fixos</h3>
+                    <span id="totalGastosFixos">R$ 0,00</span>
+                </div>
+                <div id="detalheGastosFixos" class="info-detalhe-container"></div>
+                <div id="listaGastosFixos" class="info-list"></div>
+            </div>
+
+            <!-- Rendas -->
+            <div class="info-section">
+                <div class="info-header">
+                    <h3>Rendas</h3>
+                    <span id="totalRendas">R$ 0,00</span>
+                </div>
+                <div id="detalheRendas" class="info-detalhe-container"></div>
+                <div id="listaRendas" class="info-list"></div>
+            </div>
+
+            <!-- Resumo Final -->
+            <div class="resumo-final">
+                <div class="resumo-item">
+                    <div class="resumo-label">Saldo Atual</div>
+                    <div id="saldoAtual" class="resumo-valor">R$ 0,00</div>
+                </div>
+                <div class="resumo-item">
+                    <div class="resumo-label">Rendas a Receber</div>
+                    <div id="rendasReceber" class="resumo-valor positive">R$ 0,00</div>
+                </div>
+                <div class="resumo-item">
+                    <div class="resumo-label">Total Dívidas</div>
+                    <div id="totalDividas" class="resumo-valor negative">R$ 0,00</div>
+                </div>
+                <div class="resumo-item">
+                    <div class="resumo-label">Saldo Previsto</div>
+                    <div id="saldoPrevisto" class="resumo-valor">R$ 0,00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Gráficos</h2>
+        </div>
+        <div class="card-body">
+            <div class="graficos-container">
+                <div class="grafico">
+                    <canvas id="graficoGastos"></canvas>
+                </div>
+                <div class="grafico">
+                    <canvas id="graficoRendas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Pagamento -->
+<div id="modalPagamento" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Confirmar Pagamento</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Deseja confirmar o pagamento da fatura do cartão <span id="nomeCartao"></span>?</p>
+            <div class="form-group">
+                <label for="dataPagamento">Data do Pagamento:</label>
+                <input type="date" id="dataPagamento" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="bancoSelecionado">Banco:</label>
+                <select id="bancoSelecionado" class="form-control" required>
+                    <option value="">Selecione um banco</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="valorPagamento">Valor:</label>
+                <input type="number" id="valorPagamento" class="form-control" step="0.01" required>
+            </div>
+            <input type="hidden" id="cartaoId">
+            <div class="modal-actions">
+                <button id="btnConfirmarPagamento" class="btn btn-primary">Confirmar</button>
+                <button class="btn btn-secondary close-modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Pagamento de Gasto Fixo -->
+<div id="modalPagamentoGasto" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Confirmar Pagamento</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Deseja confirmar o pagamento do gasto <span id="nomeGasto"></span>?</p>
+            <div class="form-group">
+                <label for="dataPagamentoGasto">Data do Pagamento:</label>
+                <input type="date" id="dataPagamentoGasto" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="bancoSelecionadoGasto">Banco:</label>
+                <select id="bancoSelecionadoGasto" class="form-control" required>
+                    <option value="">Selecione um banco</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="valorPagamentoGasto">Valor:</label>
+                <input type="number" id="valorPagamentoGasto" class="form-control" step="0.01" required>
+            </div>
+            <input type="hidden" id="gastoId">
+            <div class="modal-actions">
+                <button id="btnConfirmarPagamentoGasto" class="btn btn-primary">Confirmar</button>
+                <button class="btn btn-secondary close-modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Recebimento -->
+<div id="modalRecebimento" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Confirmar Recebimento</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Deseja confirmar o recebimento da renda <span id="nomeRenda"></span>?</p>
+            <div class="form-group">
+                <label for="dataRecebimento">Data do Recebimento:</label>
+                <input type="date" id="dataRecebimento" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="bancoSelecionadoRecebimento">Banco:</label>
+                <select id="bancoSelecionadoRecebimento" class="form-control" required>
+                    <option value="">Selecione um banco</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="valorRecebimento">Valor:</label>
+                <input type="number" id="valorRecebimento" class="form-control" step="0.01" required>
+            </div>
+            <input type="hidden" id="rendaId">
+            <input type="hidden" id="tipoRenda">
+            <div class="modal-actions">
+                <button id="btnConfirmarRecebimento" class="btn btn-primary">Confirmar</button>
+                <button class="btn btn-secondary close-modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div> 

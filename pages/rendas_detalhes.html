@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes de Rendas - Controle Financeiro</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="header">
+        <h1 class="header-title">Controle Financeiro</h1>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                <li><a href="bancos.html"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="cartoes.html"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="gastos_fixos.html"><i class="fas fa-calendar-alt"></i> Gastos Fixos</a></li>
+                <li><a href="rendas_fixas.html"><i class="fas fa-wallet"></i> Rendas Fixas</a></li>
+                <li><a href="rendas_variaveis.html"><i class="fas fa-dollar-sign"></i> Rendas Variáveis</a></li>
+                <li><a href="gastos_detalhes.html"><i class="fas fa-money-bill-wave"></i> Todos os Gastos</a></li>
+                <li><a href="rendas_detalhes.html" class="active"><i class="fas fa-hand-holding-usd"></i> Todas as Rendas</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>Detalhes de Rendas</h2>
+            <div class="filters">
+                <div class="form-group">
+                    <label for="periodo" class="form-label">Período</label>
+                    <select id="periodo" class="form-control" onchange="filtrarRendas()">
+                        <option value="mes-atual">Mês Atual</option>
+                        <option value="mes-anterior">Mês Anterior</option>
+                        <option value="ultimos-3-meses">Últimos 3 Meses</option>
+                        <option value="ultimos-6-meses">Últimos 6 Meses</option>
+                        <option value="ano-atual">Ano Atual</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="categoria" class="form-label">Categoria</label>
+                    <select id="categoria" class="form-control" onchange="filtrarRendas()">
+                        <option value="todos">Todas as Categorias</option>
+                        <option value="salario">Salário</option>
+                        <option value="freelance">Freelance</option>
+                        <option value="aluguel">Aluguel</option>
+                        <option value="investimentos">Investimentos</option>
+                        <option value="outros">Outros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tipo" class="form-label">Tipo</label>
+                    <select id="tipo" class="form-control" onchange="filtrarRendas()">
+                        <option value="todos">Todos os Tipos</option>
+                        <option value="fixo">Rendas Fixas</option>
+                        <option value="variavel">Rendas Variáveis</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overview-grid">
+                <div class="overview-item total-income">
+                    <h3>Total de Rendas</h3>
+                    <p id="total-rendas" class="amount positive">R$ 0,00</p>
+                </div>
+                <div class="overview-item">
+                    <h3>Média Mensal</h3>
+                    <p id="media-mensal" class="amount">R$ 0,00</p>
+                </div>
+                <div class="overview-item">
+                    <h3>Maior Renda</h3>
+                    <p id="maior-renda" class="amount">R$ 0,00</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="grafico-rendas"></canvas>
+            </div>
+
+            <div id="lista-rendas" class="item-list">
+                <!-- Lista de rendas será preenchida via JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Controle Financeiro. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/utils.js"></script>
+    <script>
+        let graficoRendas = null;
+
+        function carregarRendas() {
+            const periodo = document.getElementById('periodo').value;
+            const categoria = document.getElementById('categoria').value;
+            const tipo = document.getElementById('tipo').value;
+
+            // Obtém todas as rendas
+            let rendas = [];
+            if (tipo === 'fixo' || tipo === 'todos') {
+                rendas = rendas.concat(Database.getRendasFixas());
+            }
+            if (tipo === 'variavel' || tipo === 'todos') {
+                rendas = rendas.concat(Database.getRendasVariaveis());
+            }
+
+            // Aplica filtros
+            rendas = filtrarPorPeriodo(rendas, periodo);
+            if (categoria !== 'todos') {
+                rendas = rendas.filter(renda => renda.categoria === categoria);
+            }
+
+            // Atualiza estatísticas
+            atualizarEstatisticas(rendas);
+
+            // Atualiza gráfico
+            atualizarGrafico(rendas);
+
+            // Atualiza lista
+            const listaRendas = document.getElementById('lista-rendas');
+            listaRendas.innerHTML = '';
+
+            rendas.sort((a, b) => new Date(b.dataRecebimento || b.diaRecebimento) - new Date(a.dataRecebimento || a.diaRecebimento))
+                 .forEach(renda => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${renda.descricao}</strong>
+                        <p>Categoria: ${renda.categoria}</p>
+                        <p>Data: ${renda.dataRecebimento ? Utils.formatarData(renda.dataRecebimento) : `Dia ${renda.diaRecebimento}`}</p>
+                        <p>Conta: ${renda.contaRecebimento}</p>
+                        ${renda.observacoes ? `<p>Obs: ${renda.observacoes}</p>` : ''}
+                    </div>
+                    <div>
+                        <span class="amount positive">${Utils.formatarMoeda(renda.valor)}</span>
+                    </div>
+                `;
+                listaRendas.appendChild(item);
+            });
+        }
+
+        function filtrarPorPeriodo(rendas, periodo) {
+            const hoje = new Date();
+            const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+
+            switch (periodo) {
+                case 'mes-atual':
+                    return rendas.filter(renda => {
+                        const data = new Date(renda.dataRecebimento || `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}-${renda.diaRecebimento.toString().padStart(2, '0')}`);
+                        return data >= inicioMes && data <= fimMes;
+                    });
+                case 'mes-anterior':
+                    const inicioMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+                    const fimMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+                    return rendas.filter(renda => {
+                        const data = new Date(renda.dataRecebimento || `${inicioMesAnterior.getFullYear()}-${(inicioMesAnterior.getMonth() + 1).toString().padStart(2, '0')}-${renda.diaRecebimento.toString().padStart(2, '0')}`);
+                        return data >= inicioMesAnterior && data <= fimMesAnterior;
+                    });
+                case 'ultimos-3-meses':
+                    const inicio3Meses = new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1);
+                    return rendas.filter(renda => {
+                        const data = new Date(renda.dataRecebimento || `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}-${renda.diaRecebimento.toString().padStart(2, '0')}`);
+                        return data >= inicio3Meses && data <= fimMes;
+                    });
+                case 'ultimos-6-meses':
+                    const inicio6Meses = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1);
+                    return rendas.filter(renda => {
+                        const data = new Date(renda.dataRecebimento || `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}-${renda.diaRecebimento.toString().padStart(2, '0')}`);
+                        return data >= inicio6Meses && data <= fimMes;
+                    });
+                case 'ano-atual':
+                    const inicioAno = new Date(hoje.getFullYear(), 0, 1);
+                    const fimAno = new Date(hoje.getFullYear(), 11, 31);
+                    return rendas.filter(renda => {
+                        const data = new Date(renda.dataRecebimento || `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}-${renda.diaRecebimento.toString().padStart(2, '0')}`);
+                        return data >= inicioAno && data <= fimAno;
+                    });
+                default:
+                    return rendas;
+            }
+        }
+
+        function atualizarEstatisticas(rendas) {
+            const totalElement = document.getElementById('total-rendas');
+            const mediaElement = document.getElementById('media-mensal');
+            const maiorRendaElement = document.getElementById('maior-renda');
+
+            const total = rendas.reduce((acc, renda) => acc + parseFloat(renda.valor), 0);
+            const media = total / (rendas.length || 1);
+            const maiorRenda = rendas.reduce((max, renda) => Math.max(max, parseFloat(renda.valor)), 0);
+
+            totalElement.textContent = Utils.formatarMoeda(total);
+            mediaElement.textContent = Utils.formatarMoeda(media);
+            maiorRendaElement.textContent = Utils.formatarMoeda(maiorRenda);
+        }
+
+        function atualizarGrafico(rendas) {
+            const ctx = document.getElementById('grafico-rendas').getContext('2d');
+            
+            // Agrupa rendas por categoria
+            const rendasPorCategoria = rendas.reduce((acc, renda) => {
+                acc[renda.categoria] = (acc[renda.categoria] || 0) + parseFloat(renda.valor);
+                return acc;
+            }, {});
+
+            const dados = {
+                labels: Object.keys(rendasPorCategoria),
+                datasets: [{
+                    data: Object.values(rendasPorCategoria),
+                    backgroundColor: [
+                        '#2ecc71',
+                        '#3498db',
+                        '#f1c40f',
+                        '#9b59b6',
+                        '#e67e22',
+                        '#95a5a6'
+                    ]
+                }]
+            };
+
+            if (graficoRendas) {
+                graficoRendas.destroy();
+            }
+
+            graficoRendas = new Chart(ctx, {
+                type: 'doughnut',
+                data: dados,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function filtrarRendas() {
+            carregarRendas();
+        }
+
+        // Carrega as rendas ao iniciar a página
+        document.addEventListener('DOMContentLoaded', carregarRendas);
+    </script>
+</body>
+</html> 

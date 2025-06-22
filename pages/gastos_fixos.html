@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gastos Fixos - Controle Financeiro</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="header">
+        <h1 class="header-title">Controle Financeiro</h1>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                <li><a href="bancos.html"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="cartoes.html"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="gastos_fixos.html" class="active"><i class="fas fa-calendar-alt"></i> Gastos Fixos</a></li>
+                <li><a href="rendas_fixas.html"><i class="fas fa-wallet"></i> Rendas Fixas</a></li>
+                <li><a href="rendas_variaveis.html"><i class="fas fa-dollar-sign"></i> Rendas Variáveis</a></li>
+                <li><a href="gastos_detalhes.html"><i class="fas fa-money-bill-wave"></i> Todos os Gastos</a></li>
+                <li><a href="rendas_detalhes.html"><i class="fas fa-hand-holding-usd"></i> Todas as Rendas</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>Gerenciar Gastos Fixos</h2>
+            <button class="button button-add-expense" onclick="abrirModalGasto()">
+                <i class="fas fa-plus"></i> Adicionar Gasto Fixo
+            </button>
+
+            <div class="overview-item total-expenses">
+                <h3>Total de Gastos Fixos</h3>
+                <p id="total-gastos-fixos" class="amount negative">R$ 0,00</p>
+            </div>
+
+            <div id="lista-gastos" class="item-list">
+                <!-- Lista de gastos será preenchida via JavaScript -->
+            </div>
+        </section>
+
+        <!-- Modal para adicionar/editar gasto fixo -->
+        <div id="modal-gasto" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3 id="modal-titulo">Adicionar Gasto Fixo</h3>
+                <form id="form-gasto" onsubmit="salvarGasto(event)">
+                    <input type="hidden" id="gastoId">
+                    <div class="form-group">
+                        <label for="descricao" class="form-label">Descrição</label>
+                        <input type="text" id="descricao" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="valor" class="form-label">Valor</label>
+                        <input type="number" id="valor" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="diaVencimento" class="form-label">Dia do Vencimento</label>
+                        <input type="number" id="diaVencimento" class="form-control" min="1" max="31" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoria" class="form-label">Categoria</label>
+                        <select id="categoria" class="form-control" required>
+                            <option value="moradia">Moradia</option>
+                            <option value="transporte">Transporte</option>
+                            <option value="alimentacao">Alimentação</option>
+                            <option value="saude">Saúde</option>
+                            <option value="educacao">Educação</option>
+                            <option value="lazer">Lazer</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="formaPagamento" class="form-label">Forma de Pagamento</label>
+                        <select id="formaPagamento" class="form-control" required>
+                            <option value="debito">Débito em Conta</option>
+                            <option value="boleto">Boleto</option>
+                            <option value="cartao">Cartão de Crédito</option>
+                            <option value="pix">PIX</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="button button-add-income">Salvar</button>
+                        <button type="button" class="button button-add-expense" onclick="fecharModalGasto()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Controle Financeiro. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/utils.js"></script>
+    <script>
+        // Funções para gerenciamento de gastos fixos
+        function carregarGastosFixos() {
+            const gastos = Database.getGastosFixos();
+            const listaGastos = document.getElementById('lista-gastos');
+            const totalElement = document.getElementById('total-gastos-fixos');
+            listaGastos.innerHTML = '';
+
+            const total = gastos.reduce((acc, gasto) => acc + parseFloat(gasto.valor), 0);
+            totalElement.textContent = Utils.formatarMoeda(total);
+
+            gastos.forEach(gasto => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${gasto.descricao}</strong>
+                        <p>Categoria: ${gasto.categoria}</p>
+                        <p>Vencimento: Dia ${gasto.diaVencimento}</p>
+                        <p>Forma de Pagamento: ${gasto.formaPagamento}</p>
+                    </div>
+                    <div>
+                        <span class="amount negative">${Utils.formatarMoeda(gasto.valor)}</span>
+                    </div>
+                    <div class="item-actions">
+                        <i class="fas fa-edit edit-icon" onclick="editarGasto(${gasto.id})" title="Editar"></i>
+                        <i class="fas fa-trash-alt delete-icon" onclick="excluirGasto(${gasto.id})" title="Excluir"></i>
+                    </div>
+                `;
+                listaGastos.appendChild(item);
+            });
+        }
+
+        function abrirModalGasto(gasto = null) {
+            const modal = document.getElementById('modal-gasto');
+            const titulo = document.getElementById('modal-titulo');
+            const form = document.getElementById('form-gasto');
+            
+            if (gasto) {
+                titulo.textContent = 'Editar Gasto Fixo';
+                form.gastoId.value = gasto.id;
+                form.descricao.value = gasto.descricao;
+                form.valor.value = gasto.valor;
+                form.diaVencimento.value = gasto.diaVencimento;
+                form.categoria.value = gasto.categoria;
+                form.formaPagamento.value = gasto.formaPagamento;
+            } else {
+                titulo.textContent = 'Adicionar Gasto Fixo';
+                form.reset();
+                form.gastoId.value = '';
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function fecharModalGasto() {
+            document.getElementById('modal-gasto').style.display = 'none';
+        }
+
+        function salvarGasto(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const gasto = {
+                descricao: form.descricao.value,
+                valor: parseFloat(form.valor.value),
+                diaVencimento: parseInt(form.diaVencimento.value),
+                categoria: form.categoria.value,
+                formaPagamento: form.formaPagamento.value
+            };
+
+            if (form.gastoId.value) {
+                Database.update(Database.KEYS.GASTOS_FIXOS, parseInt(form.gastoId.value), gasto);
+                Utils.mostrarSucesso('Gasto fixo atualizado com sucesso!');
+            } else {
+                Database.add(Database.KEYS.GASTOS_FIXOS, gasto);
+                Utils.mostrarSucesso('Gasto fixo adicionado com sucesso!');
+            }
+
+            fecharModalGasto();
+            carregarGastosFixos();
+        }
+
+        function editarGasto(id) {
+            const gasto = Database.getAll(Database.KEYS.GASTOS_FIXOS).find(g => g.id === id);
+            if (gasto) {
+                abrirModalGasto(gasto);
+            }
+        }
+
+        function excluirGasto(id) {
+            if (Utils.confirmarAcao('Tem certeza que deseja excluir este gasto fixo?')) {
+                Database.delete(Database.KEYS.GASTOS_FIXOS, id);
+                Utils.mostrarSucesso('Gasto fixo excluído com sucesso!');
+                carregarGastosFixos();
+            }
+        }
+
+        // Carrega os gastos fixos ao iniciar a página
+        document.addEventListener('DOMContentLoaded', carregarGastosFixos);
+    </script>
+</body>
+</html> 

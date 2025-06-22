@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rendas Variáveis - Controle Financeiro</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="header">
+        <h1 class="header-title">Controle Financeiro</h1>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                <li><a href="bancos.html"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="cartoes.html"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="gastos_fixos.html"><i class="fas fa-calendar-alt"></i> Gastos Fixos</a></li>
+                <li><a href="rendas_fixas.html"><i class="fas fa-wallet"></i> Rendas Fixas</a></li>
+                <li><a href="rendas_variaveis.html" class="active"><i class="fas fa-dollar-sign"></i> Rendas Variáveis</a></li>
+                <li><a href="gastos_detalhes.html"><i class="fas fa-money-bill-wave"></i> Todos os Gastos</a></li>
+                <li><a href="rendas_detalhes.html"><i class="fas fa-hand-holding-usd"></i> Todas as Rendas</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>Gerenciar Rendas Variáveis</h2>
+            <button class="button button-add-income" onclick="abrirModalRenda()">
+                <i class="fas fa-plus"></i> Adicionar Renda Variável
+            </button>
+
+            <div class="overview-item total-income">
+                <h3>Total de Rendas Variáveis (Mês Atual)</h3>
+                <p id="total-rendas-variaveis" class="amount positive">R$ 0,00</p>
+            </div>
+
+            <div id="lista-rendas" class="item-list">
+                <!-- Lista de rendas será preenchida via JavaScript -->
+            </div>
+        </section>
+
+        <!-- Modal para adicionar/editar renda variável -->
+        <div id="modal-renda" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3 id="modal-titulo">Adicionar Renda Variável</h3>
+                <form id="form-renda" onsubmit="salvarRenda(event)">
+                    <input type="hidden" id="rendaId">
+                    <div class="form-group">
+                        <label for="descricao" class="form-label">Descrição</label>
+                        <input type="text" id="descricao" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="valor" class="form-label">Valor</label>
+                        <input type="number" id="valor" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dataRecebimento" class="form-label">Data do Recebimento</label>
+                        <input type="date" id="dataRecebimento" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoria" class="form-label">Categoria</label>
+                        <select id="categoria" class="form-control" required>
+                            <option value="freelance">Freelance</option>
+                            <option value="comissao">Comissão</option>
+                            <option value="bonus">Bônus</option>
+                            <option value="vendas">Vendas</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contaRecebimento" class="form-label">Conta de Recebimento</label>
+                        <select id="contaRecebimento" class="form-control" required>
+                            <!-- Opções de contas serão preenchidas via JavaScript -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="observacoes" class="form-label">Observações</label>
+                        <textarea id="observacoes" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="button button-add-income">Salvar</button>
+                        <button type="button" class="button button-add-expense" onclick="fecharModalRenda()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Controle Financeiro. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/utils.js"></script>
+    <script>
+        // Funções para gerenciamento de rendas variáveis
+        function carregarRendasVariaveis() {
+            const rendas = Database.getRendasVariaveis();
+            const listaRendas = document.getElementById('lista-rendas');
+            const totalElement = document.getElementById('total-rendas-variaveis');
+            listaRendas.innerHTML = '';
+
+            // Filtra rendas do mês atual
+            const hoje = new Date();
+            const mesAtual = hoje.getMonth();
+            const anoAtual = hoje.getFullYear();
+            
+            const rendasMesAtual = rendas.filter(renda => {
+                const dataRenda = new Date(renda.dataRecebimento);
+                return dataRenda.getMonth() === mesAtual && dataRenda.getFullYear() === anoAtual;
+            });
+
+            const total = rendasMesAtual.reduce((acc, renda) => acc + parseFloat(renda.valor), 0);
+            totalElement.textContent = Utils.formatarMoeda(total);
+
+            rendas.forEach(renda => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${renda.descricao}</strong>
+                        <p>Categoria: ${renda.categoria}</p>
+                        <p>Data: ${Utils.formatarData(renda.dataRecebimento)}</p>
+                        <p>Conta: ${renda.contaRecebimento}</p>
+                        ${renda.observacoes ? `<p>Obs: ${renda.observacoes}</p>` : ''}
+                    </div>
+                    <div>
+                        <span class="amount positive">${Utils.formatarMoeda(renda.valor)}</span>
+                    </div>
+                    <div class="item-actions">
+                        <i class="fas fa-edit edit-icon" onclick="editarRenda(${renda.id})" title="Editar"></i>
+                        <i class="fas fa-trash-alt delete-icon" onclick="excluirRenda(${renda.id})" title="Excluir"></i>
+                    </div>
+                `;
+                listaRendas.appendChild(item);
+            });
+        }
+
+        function carregarContas() {
+            const contas = Database.getBancos();
+            const selectConta = document.getElementById('contaRecebimento');
+            selectConta.innerHTML = '<option value="">Selecione uma conta</option>';
+
+            contas.forEach(conta => {
+                const option = document.createElement('option');
+                option.value = conta.id;
+                option.textContent = `${conta.nome} (${conta.tipoConta})`;
+                selectConta.appendChild(option);
+            });
+        }
+
+        function abrirModalRenda(renda = null) {
+            const modal = document.getElementById('modal-renda');
+            const titulo = document.getElementById('modal-titulo');
+            const form = document.getElementById('form-renda');
+            
+            carregarContas();
+            
+            if (renda) {
+                titulo.textContent = 'Editar Renda Variável';
+                form.rendaId.value = renda.id;
+                form.descricao.value = renda.descricao;
+                form.valor.value = renda.valor;
+                form.dataRecebimento.value = renda.dataRecebimento;
+                form.categoria.value = renda.categoria;
+                form.contaRecebimento.value = renda.contaRecebimento;
+                form.observacoes.value = renda.observacoes || '';
+            } else {
+                titulo.textContent = 'Adicionar Renda Variável';
+                form.reset();
+                form.rendaId.value = '';
+                // Define a data atual como padrão
+                const hoje = new Date().toISOString().split('T')[0];
+                form.dataRecebimento.value = hoje;
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function fecharModalRenda() {
+            document.getElementById('modal-renda').style.display = 'none';
+        }
+
+        function salvarRenda(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const renda = {
+                descricao: form.descricao.value,
+                valor: parseFloat(form.valor.value),
+                dataRecebimento: form.dataRecebimento.value,
+                categoria: form.categoria.value,
+                contaRecebimento: form.contaRecebimento.value,
+                observacoes: form.observacoes.value.trim()
+            };
+
+            if (form.rendaId.value) {
+                Database.update(Database.KEYS.RENDAS_VARIAVEIS, parseInt(form.rendaId.value), renda);
+                Utils.mostrarSucesso('Renda variável atualizada com sucesso!');
+            } else {
+                Database.add(Database.KEYS.RENDAS_VARIAVEIS, renda);
+                Utils.mostrarSucesso('Renda variável adicionada com sucesso!');
+            }
+
+            fecharModalRenda();
+            carregarRendasVariaveis();
+        }
+
+        function editarRenda(id) {
+            const renda = Database.getAll(Database.KEYS.RENDAS_VARIAVEIS).find(r => r.id === id);
+            if (renda) {
+                abrirModalRenda(renda);
+            }
+        }
+
+        function excluirRenda(id) {
+            if (Utils.confirmarAcao('Tem certeza que deseja excluir esta renda variável?')) {
+                Database.delete(Database.KEYS.RENDAS_VARIAVEIS, id);
+                Utils.mostrarSucesso('Renda variável excluída com sucesso!');
+                carregarRendasVariaveis();
+            }
+        }
+
+        // Carrega as rendas variáveis ao iniciar a página
+        document.addEventListener('DOMContentLoaded', carregarRendasVariaveis);
+    </script>
+</body>
+</html> 

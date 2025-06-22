@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações - Finnairaceora</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <a href="../index.html" class="nav-logo">
+                <i class="fas fa-wallet"></i> Finnairaceora
+            </a>
+            <ul class="nav-menu">
+                <li><a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="bancos.html" class="nav-link"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="cartoes.html" class="nav-link"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="gastos.html" class="nav-link"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
+                <li><a href="rendas.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
+                <li><a href="settings.html" class="nav-link active"><i class="fas fa-cog"></i> Configurações</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2>Configurações do Sistema</h2>
+            </div>
+            <div class="card-body">
+                <!-- Configuração de Tema -->
+                <div class="settings-item">
+                    <div class="settings-label">
+                        <i class="fas fa-palette"></i>
+                        <span>Tema</span>
+                    </div>
+                    <div class="settings-control">
+                        <select id="themeSelector" class="form-input">
+                            <option value="light">Claro</option>
+                            <option value="dark">Escuro</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Configuração de Notificações -->
+                <div class="settings-item">
+                    <div class="settings-label">
+                        <i class="fas fa-bell"></i>
+                        <span>Notificações</span>
+                    </div>
+                    <div class="settings-control">
+                        <label class="switch">
+                            <input type="checkbox" id="notificationsToggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Configuração de Moeda -->
+                <div class="settings-item">
+                    <div class="settings-label">
+                        <i class="fas fa-money-bill-alt"></i>
+                        <span>Moeda Principal</span>
+                    </div>
+                    <div class="settings-control">
+                        <select id="currencySelector" class="form-input">
+                            <option value="BRL">Real (BRL)</option>
+                            <option value="USD">Dólar (USD)</option>
+                            <option value="EUR">Euro (EUR)</option>
+                        </select>
+                    </div>
+                </div>
+
+                 <!-- Apagar Dados Locais -->
+                 <div class="settings-item">
+                    <div class="settings-label">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>Apagar Dados</span>
+                    </div>
+                    <div class="settings-control">
+                        <button id="clearDataButton" class="btn btn-perigo">
+                            <i class="fas fa-exclamation-triangle"></i> Limpar Dados Locais
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+            <div class="card-footer">
+                <button id="saveSettings" class="btn btn-primario">
+                    <i class="fas fa-save"></i> Salvar Alterações
+                </button>
+            </div>
+        </div>
+
+        <!-- Seção de Gerenciamento de Metas -->
+        <div class="card mt-2">
+            <div class="card-header">
+                <h2>Gerenciar Metas de Gastos</h2>
+            </div>
+            <div class="card-body" id="metasContainer">
+                <!-- As metas serão carregadas aqui -->
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-secondary" onclick="adicionarMetaGasto()">
+                    <i class="fas fa-plus"></i> Nova Meta
+                </button>
+                <button class="btn btn-primary" onclick="salvarMetasGastos()">
+                    <i class="fas fa-save"></i> Salvar Metas
+                </button>
+            </div>
+        </div>
+
+        <!-- Seção de Gerenciamento de Categorias e Metas de Renda -->
+        <div class="card mt-2">
+            <div class="card-header">
+                <h2>Gerenciar Categorias e Metas de Renda</h2>
+                <button class="btn btn-primary" onclick="abrirModalCategoria('renda')">
+                    <i class="fas fa-plus"></i> Nova Categoria de Renda
+                </button>
+            </div>
+            <div class="table-container" id="metasRendaContainer">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Meta (R$)</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaMetasRenda">
+                        <!-- Conteúdo gerado via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" onclick="salvarMetasRenda()">
+                    <i class="fas fa-save"></i> Salvar Metas de Renda
+                </button>
+            </div>
+        </div>
+
+        <!-- Seção de Gerenciamento de Categorias de Gastos -->
+        <div class="card mt-2">
+            <div class="card-header">
+                <h2>Gerenciar Categorias de Gastos</h2>
+                <button class="btn btn-primary" onclick="abrirModalCategoria('gasto')">
+                    <i class="fas fa-plus"></i> Nova Categoria de Gasto
+                </button>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Ícone</th>
+                            <th>Cor</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaCategoriasGastos"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Categoria -->
+    <div id="modalCategoria" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTituloCategoria">Nova Categoria</h3>
+                <button class="btn-close" onclick="fecharModalCategoria()">&times;</button>
+            </div>
+            <form id="formCategoria" onsubmit="salvarCategoria(event)">
+                <input type="hidden" id="categoriaId">
+                <input type="hidden" id="tipoCategoria" value="gasto">
+
+                <div class="form-group">
+                    <label for="nomeCategoria">Nome</label>
+                    <input type="text" id="nomeCategoria" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="iconeCategoria">Ícone (classe Font Awesome)</label>
+                    <div class="input-group">
+                        <input type="text" id="iconeCategoria" class="form-input" value="fas fa-tag" required>
+                        <span class="input-group-text">
+                            <i id="previewIcone" class="fas fa-tag"></i>
+                        </span>
+                    </div>
+                    <small>Ex: fas fa-tag, fas fa-home, fas fa-car</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="corCategoria">Cor</label>
+                    <input type="color" id="corCategoria" class="form-input" value="#2ECC71" required>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalCategoria()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
+    </footer>
+
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/settings.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Garante que as tabelas de categorias existam no DB
+            if (!localStorage.getItem('categorias_gastos') || !localStorage.getItem('categorias_rendas')) {
+                db.reset(); // Função hipotética para popular dados iniciais
+            }
+
+            // Carrega todas as seções
+            carregarMetasGastos();
+            carregarMetasRenda();
+            carregarCategoriasGastos();
+
+            // Adiciona listener para preview do ícone no modal
+            const iconeInput = document.getElementById('iconeCategoria');
+            if (iconeInput) {
+                iconeInput.addEventListener('input', (e) => {
+                    const previewIcone = document.getElementById('previewIcone');
+                    if (previewIcone) {
+                        previewIcone.className = e.target.value;
+                    }
+                });
+            }
+        });
+
+        // --- LÓGICA PARA METAS DE GASTOS ---
+        function carregarMetasGastos() {
+            const container = document.getElementById('metasContainer');
+            let metas = JSON.parse(localStorage.getItem('metas_gastos'));
+
+            if (!metas) {
+                metas = [
+                    { id: Date.now() + 1, nome: 'Gastos Pessoais', icone: 'fas fa-user', valor: 300.00 },
+                    { id: Date.now() + 2, nome: 'Gastos Casa', icone: 'fas fa-home', valor: 1500.00 }
+                ];
+                localStorage.setItem('metas_gastos', JSON.stringify(metas));
+            }
+
+            container.innerHTML = '';
+            metas.forEach(meta => {
+                const metaEl = document.createElement('div');
+                metaEl.className = 'settings-item';
+                metaEl.dataset.metaId = meta.id;
+                metaEl.innerHTML = `
+                    <div class="settings-label">
+                        <input type="text" class="form-input" value="${meta.icone}" placeholder="Ícone Font Awesome">
+                        <input type="text" class="form-input" value="${meta.nome}" placeholder="Nome da Meta">
+                    </div>
+                    <div class="settings-control">
+                        <input type="number" class="form-input" value="${meta.valor}" placeholder="Valor da Meta" step="0.01">
+                        <button class="btn btn-danger btn-small" onclick="removerMetaGasto(${meta.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(metaEl);
+            });
+        }
+
+        function adicionarMetaGasto() {
+            const container = document.getElementById('metasContainer');
+            const newId = Date.now();
+            const metaEl = document.createElement('div');
+            metaEl.className = 'settings-item';
+            metaEl.dataset.metaId = newId;
+            metaEl.innerHTML = `
+                <div class="settings-label">
+                    <input type="text" class="form-input" placeholder="Ícone Font Awesome" value="fas fa-star">
+                    <input type="text" class="form-input" placeholder="Nome da Meta">
+                </div>
+                <div class="settings-control">
+                    <input type="number" class="form-input" placeholder="Valor da Meta" step="0.01">
+                    <button class="btn btn-danger btn-small" onclick="removerMetaGasto(${newId})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(metaEl);
+        }
+
+        function removerMetaGasto(id) {
+            if (confirm('Tem certeza que deseja remover esta meta?')) {
+                document.querySelector(`#metasContainer .settings-item[data-meta-id='${id}']`).remove();
+            }
+        }
+
+        function salvarMetasGastos() {
+            const container = document.getElementById('metasContainer');
+            const metaElements = container.querySelectorAll('.settings-item');
+            const novasMetas = [];
+            metaElements.forEach(el => {
+                const id = Number(el.dataset.metaId);
+                const icone = el.querySelector('.settings-label input:first-child').value;
+                const nome = el.querySelector('.settings-label input:last-child').value;
+                const valor = parseFloat(el.querySelector('.settings-control input').value);
+
+                if (nome && valor) {
+                    novasMetas.push({ id, icone, nome, valor });
+                }
+            });
+
+            localStorage.setItem('metas_gastos', JSON.stringify(novasMetas));
+            alert('Metas de gastos salvas com sucesso!');
+        }
+
+
+        // --- LÓGICA UNIFICADA PARA CATEGORIAS ---
+        function abrirModalCategoria(tipo, categoriaId = null) {
+            const modal = document.getElementById('modalCategoria');
+            const form = document.getElementById('formCategoria');
+            form.reset();
+            
+            document.getElementById('tipoCategoria').value = tipo;
+            document.getElementById('categoriaId').value = '';
+            
+            if (categoriaId) {
+                const entidade = `categorias_${tipo}`;
+                const categorias = db.getAll(entidade);
+                const categoria = categorias.find(c => c.id === categoriaId);
+
+                if (categoria) {
+                    document.getElementById('categoriaId').value = categoria.id;
+                    document.getElementById('nomeCategoria').value = categoria.nome;
+                    document.getElementById('iconeCategoria').value = categoria.icone;
+                    document.getElementById('corCategoria').value = categoria.cor;
+                    document.getElementById('previewIcone').className = categoria.icone || 'fas fa-tag';
+                }
+            } else {
+                document.getElementById('previewIcone').className = 'fas fa-tag';
+            }
+            
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        }
+
+        function fecharModalCategoria() {
+            const modal = document.getElementById('modalCategoria');
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+
+        function salvarCategoria(event) {
+            event.preventDefault();
+            const tipo = document.getElementById('tipoCategoria').value;
+            const entidade = `categorias_${tipo}s`; // Adiciona 's' no final para corresponder ao nome da tabela
+            const categoriaId = document.getElementById('categoriaId').value;
+            const categoriaData = {
+                nome: document.getElementById('nomeCategoria').value,
+                icone: document.getElementById('iconeCategoria').value,
+                cor: document.getElementById('corCategoria').value,
+            };
+
+            console.log('Salvando categoria:', { tipo, entidade, categoriaId, categoriaData });
+
+            try {
+                let resultado;
+                if (categoriaId) {
+                    resultado = db.update(entidade, Number(categoriaId), categoriaData);
+                    console.log('Categoria atualizada:', resultado);
+                } else {
+                    resultado = db.insert(entidade, categoriaData);
+                    console.log('Categoria inserida:', resultado);
+                }
+
+                // Verifica se a categoria foi salva corretamente
+                const categorias = db.getAll(entidade);
+                console.log('Categorias após salvar:', categorias);
+
+                if (tipo === 'gasto') {
+                    carregarCategoriasGastos();
+                } else {
+                    carregarMetasRenda();
+                }
+
+                fecharModalCategoria();
+                Utils.mostrarMensagem('Categoria salva com sucesso!', 'sucesso');
+            } catch (error) {
+                console.error('Erro ao salvar categoria:', error);
+                Utils.mostrarMensagem('Erro ao salvar categoria. Verifique o console.', 'erro');
+            }
+        }
+
+        function excluirCategoria(tipo, id) {
+            if (confirm('Tem certeza? A exclusão pode afetar registros existentes.')) {
+                db.delete(`categorias_${tipo}`, Number(id));
+                if (tipo === 'gasto') {
+                    carregarCategoriasGastos();
+                } else {
+                    carregarMetasRenda();
+                }
+                Utils.mostrarMensagem('Categoria excluída com sucesso!', 'sucesso');
+            }
+        }
+
+
+        // --- LÓGICA PARA CATEGORIAS DE GASTOS ---
+        function carregarCategoriasGastos() {
+            const tbody = document.getElementById('tabelaCategoriasGastos');
+            const categorias = db.getAll('categorias_gastos') || [];
+            tbody.innerHTML = '';
+            
+            if (categorias.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center">Nenhuma categoria de gasto cadastrada.</td></tr>`;
+                return;
+            }
+
+            categorias.forEach(categoria => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${categoria.nome}</td>
+                    <td><i class="${categoria.icone}" style="color: ${categoria.cor}"></i> ${categoria.icone}</td>
+                    <td>
+                        <span class="cor-preview" style="background-color: ${categoria.cor}"></span>
+                        ${categoria.cor}
+                    </td>
+                    <td>
+                        <button class="btn btn-small btn-secondary" onclick="abrirModalCategoria('gasto', ${categoria.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-small btn-danger" onclick="excluirCategoria('gasto', ${categoria.id})"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- LÓGICA PARA METAS DE RENDA ---
+        function carregarMetasRenda() {
+            const categoriasRenda = db.getAll('categorias_rendas') || [];
+            console.log('Categorias de renda carregadas:', categoriasRenda);
+
+            const metasRenda = JSON.parse(localStorage.getItem('metas_rendas')) || {};
+            console.log('Metas de renda carregadas:', metasRenda);
+
+            const tbody = document.getElementById('tabelaMetasRenda');
+            tbody.innerHTML = '';
+
+            if (categoriasRenda.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma categoria de renda encontrada. Adicione uma nova categoria para começar.</td></tr>';
+                return;
+            }
+
+            categoriasRenda.forEach(categoria => {
+                const valorMeta = metasRenda[categoria.id] || 0;
+                console.log(`Categoria: ${categoria.nome}, Meta: ${valorMeta}`);
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <i class="${categoria.icone}" style="color: ${categoria.cor};"></i>
+                        ${categoria.nome}
+                    </td>
+                    <td>
+                        <input type="number" class="form-control" value="${valorMeta}" 
+                               data-categoria-id="${categoria.id}" onchange="salvarMetaRenda(this)">
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-2" onclick="abrirModalCategoria('renda', ${categoria.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirCategoria('renda', ${categoria.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function salvarMetasRenda() {
+            const tbody = document.getElementById('tabelaMetasRenda');
+            const inputs = tbody.querySelectorAll('input[data-categoria-id]');
+            const novasMetas = {};
+
+            inputs.forEach(input => {
+                const categoriaId = input.dataset.categoriaId;
+                const valor = parseFloat(input.value);
+                if (valor >= 0) { // Permite meta 0
+                    novasMetas[categoriaId] = valor;
+                }
+            });
+
+            localStorage.setItem('metas_rendas', JSON.stringify(novasMetas));
+            alert('Metas de renda salvas com sucesso!');
+        }
+
+        function salvarMetaRenda(input) {
+            const categoriaId = input.dataset.categoriaId;
+            const valor = parseFloat(input.value);
+            
+            // Recupera as metas existentes
+            const metasRenda = JSON.parse(localStorage.getItem('metas_rendas')) || {};
+            
+            // Atualiza a meta para a categoria específica
+            if (valor >= 0) {
+                metasRenda[categoriaId] = valor;
+                localStorage.setItem('metas_rendas', JSON.stringify(metasRenda));
+                Utils.mostrarMensagem('Meta de renda atualizada com sucesso!', 'sucesso');
+            }
+        }
+
+    </script>
+</body>
+
+</html> 

@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bancos - Finnairaceora</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <style>
+        /* Garantir que o modal seja exibido corretamente */
+        .modal.active {
+            display: flex !important;
+        }
+        
+        /* Estilos para ícones de transação */
+        .icon-entrada {
+            color: #2ECC71;
+        }
+        .icon-saida {
+            color: #E74C3C;
+        }
+        
+        /* Estilos para filtros de transação */
+        .filtros-transacoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .filtro-item {
+            padding: 5px 10px;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filtro-item:hover, .filtro-item.ativo {
+            background-color: #3498DB;
+            color: white;
+        }
+        
+        /* Cursor pointer para linhas de transações */
+        #tabelaTransacoes tr {
+            cursor: pointer;
+        }
+        
+        #tabelaTransacoes tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        /* Estilo para botão de nova transação */
+        .btn-nova-transacao {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <div class="nav-logo">
+                <i class="fas fa-wallet"></i> Finnairaceora
+            </div>
+            <ul class="nav-menu">
+                <li><a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="bancos.html" class="nav-link active"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="cartoes.html" class="nav-link"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="gastos.html" class="nav-link"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
+                <li><a href="rendas.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
+                <li><a href="settings.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card mb-1">
+            <div class="card-header">
+                <h2 class="card-title">Gerenciar Bancos</h2>
+                <button class="btn btn-primario" onclick="abrirModalBanco()">
+                    <i class="fas fa-plus"></i> Novo Banco
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nome do Banco</th>
+                            <th>Agência</th>
+                            <th>Conta</th>
+                            <th>Tipo</th>
+                            <th>Saldo</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaBancos"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Nova seção para exibir transações -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Transações Bancárias</h2>
+                <div class="card-actions">
+                    <select id="filtroBanco" class="form-input">
+                        <option value="todos">Todos os Bancos</option>
+                    </select>
+                    <button class="btn btn-primario btn-nova-transacao" onclick="abrirModalTransacao()">
+                        <i class="fas fa-plus"></i> Nova Transação
+                    </button>
+                </div>
+            </div>
+            
+            <div class="filtros-transacoes">
+                <div class="filtro-item ativo" data-filtro="todos">Todas</div>
+                <div class="filtro-item" data-filtro="entrada">Entradas</div>
+                <div class="filtro-item" data-filtro="saida">Saídas</div>
+            </div>
+            
+            <div class="table-container">
+                <table class="table table-transacoes">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Data/Hora</th>
+                            <th>Descrição</th>
+                            <th>Valor</th>
+                            <th>Banco</th>
+                            <th>Categoria</th>
+                            <th>Origem/Destino</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaTransacoes"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para adicionar/editar banco -->
+    <div id="modalBanco" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitulo">Novo Banco</h3>
+                <span class="modal-close" onclick="fecharModalBanco()">&times;</span>
+            </div>
+            <form id="formBanco" onsubmit="salvarBanco(event)">
+                <input type="hidden" id="bancoId">
+                <div class="form-group">
+                    <label class="form-label" for="nomeBanco">Nome do Banco*</label>
+                    <input type="text" id="nomeBanco" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="agencia">Agência*</label>
+                    <input type="text" id="agencia" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="conta">Conta*</label>
+                    <input type="text" id="conta" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="tipoConta">Tipo de Conta*</label>
+                    <select id="tipoConta" class="form-input" required>
+                        <option value="Corrente">Conta Corrente</option>
+                        <option value="Poupança">Conta Poupança</option>
+                        <option value="Investimento">Conta Investimento</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="saldo">Saldo Atual*</label>
+                    <input type="number" id="saldo" class="form-input" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primario">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                    <button type="button" class="btn btn-perigo" onclick="fecharModalBanco()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal para adicionar transação -->
+    <div id="modalTransacao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Transação</h3>
+                <span class="modal-close" onclick="fecharModal('modalTransacao')">&times;</span>
+            </div>
+            <form id="formTransacao" onsubmit="salvarTransacao(event)">
+                <div class="form-group">
+                    <label class="form-label" for="tipoTransacao">Tipo de Transação*</label>
+                    <select id="tipoTransacao" class="form-input" required>
+                        <option value="entrada">Entrada</option>
+                        <option value="saida">Saída</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="descricaoTransacao">Descrição*</label>
+                    <input type="text" id="descricaoTransacao" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="valorTransacao">Valor*</label>
+                    <input type="number" id="valorTransacao" class="form-input" step="0.01" min="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="dataTransacao">Data*</label>
+                    <input type="date" id="dataTransacao" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="horaTransacao">Hora*</label>
+                    <input type="time" id="horaTransacao" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="bancoTransacao">Banco*</label>
+                    <select id="bancoTransacao" class="form-input" required></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="categoriaTransacao">Categoria</label>
+                    <input type="text" id="categoriaTransacao" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="origemDestinoTransacao">Origem/Destino</label>
+                    <input type="text" id="origemDestinoTransacao" class="form-input">
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primario">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                    <button type="button" class="btn btn-perigo" onclick="fecharModal('modalTransacao')">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal para detalhes da transação -->
+    <div id="modalDetalhesTransacao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Detalhes da Transação</h3>
+                <span class="modal-close" onclick="fecharModal('modalDetalhesTransacao')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="detalhe-item">
+                    <strong>Tipo:</strong> <span id="detalhe-tipo"></span>
+                </div>
+                <div class="detalhe-item">
+                    <strong>Data/Hora:</strong> <span id="detalhe-data-hora"></span>
+                </div>
+                <div class="detalhe-item">
+                    <strong>Descrição:</strong> <span id="detalhe-descricao"></span>
+                </div>
+                <div class="detalhe-item">
+                    <strong>Valor:</strong> <span id="detalhe-valor"></span>
+                </div>
+                <div class="detalhe-item">
+                    <strong>Banco:</strong> <span id="detalhe-banco"></span>
+                </div>
+                <div class="detalhe-item">
+                    <strong>Categoria:</strong> <span id="detalhe-categoria"></span>
+                </div>
+                <div class="detalhe-item">
+                    <strong>Origem/Destino:</strong> <span id="detalhe-origem-destino"></span>
+                </div>
+                <div class="form-group mt-2">
+                    <button type="button" class="btn btn-perigo" onclick="excluirTransacao()">
+                        <i class="fas fa-trash"></i> Excluir Transação
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
+    </footer>
+
+    <!-- Carregar scripts sem usar módulos ES6 -->
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/database.js"></script>
+    <script>
+        // Variável para armazenar a transação selecionada
+        let transacaoSelecionada = null;
+        
+        // Funções globais para o modal
+        function abrirModalBanco(bancoId = null) {
+            const modal = document.getElementById('modalBanco');
+            const titulo = document.getElementById('modalTitulo');
+            const form = document.getElementById('formBanco');
+
+            if (bancoId) {
+                const bancos = db.getAll('bancos');
+                const banco = bancos.find(b => b.id === Number(bancoId));
+                if (banco) {
+                    titulo.textContent = 'Editar Banco';
+                    document.getElementById('bancoId').value = banco.id;
+                    document.getElementById('nomeBanco').value = banco.nome;
+                    document.getElementById('agencia').value = banco.agencia;
+                    document.getElementById('conta').value = banco.conta;
+                    document.getElementById('tipoConta').value = banco.tipo;
+                    document.getElementById('saldo').value = banco.saldo;
+                }
+            } else {
+                titulo.textContent = 'Novo Banco';
+                form.reset();
+                document.getElementById('bancoId').value = '';
+            }
+
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        }
+
+        function fecharModalBanco() {
+            const modal = document.getElementById('modalBanco');
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+        
+        function fecharModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+
+        function salvarBanco(event) {
+            event.preventDefault();
+
+            const bancoData = {
+                nome: document.getElementById('nomeBanco').value,
+                agencia: document.getElementById('agencia').value,
+                conta: document.getElementById('conta').value,
+                tipo: document.getElementById('tipoConta').value,
+                saldo: Number(document.getElementById('saldo').value)
+            };
+
+            const bancoId = document.getElementById('bancoId').value;
+            
+            if (bancoId) {
+                // Atualizar banco existente
+                db.update('bancos', Number(bancoId), bancoData);
+            } else {
+                // Inserir novo banco
+                db.insert('bancos', bancoData);
+            }
+
+            carregarBancos();
+            fecharModalBanco();
+            Utils.mostrarMensagem('Banco salvo com sucesso!', 'sucesso');
+        }
+
+        function editarBanco(id) {
+            abrirModalBanco(id);
+        }
+
+        function excluirBanco(id) {
+            if (confirm('Tem certeza que deseja excluir este banco?')) {
+                db.delete('bancos', Number(id));
+                carregarBancos();
+                Utils.mostrarMensagem('Banco excluído com sucesso!', 'sucesso');
+            }
+        }
+        
+        // Abre o modal para adicionar transação
+        function abrirModalTransacao() {
+            const modal = document.getElementById('modalTransacao');
+            const form = document.getElementById('formTransacao');
+            form.reset();
+            
+            // Preencher data e hora atuais
+            const agora = new Date();
+            document.getElementById('dataTransacao').valueAsDate = agora;
+            document.getElementById('horaTransacao').value = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            // Carregar bancos no select
+            carregarBancosSelect('bancoTransacao');
+            
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        }
+        
+        // Salva uma nova transação
+        function salvarTransacao(event) {
+            event.preventDefault();
+            
+            const tipo = document.getElementById('tipoTransacao').value;
+            const descricao = document.getElementById('descricaoTransacao').value;
+            const valor = Number(document.getElementById('valorTransacao').value);
+            const data = document.getElementById('dataTransacao').value;
+            const hora = document.getElementById('horaTransacao').value;
+            const bancoId = Number(document.getElementById('bancoTransacao').value);
+            const categoria = document.getElementById('categoriaTransacao').value;
+            const origemDestino = document.getElementById('origemDestinoTransacao').value;
+            
+            // Combinar data e hora
+            const dataHora = new Date(`${data}T${hora}`);
+            
+            // Criar objeto de transação
+            const transacao = {
+                tipo: tipo,
+                descricao: descricao,
+                valor: valor,
+                data: dataHora.toISOString(),
+                bancoId: bancoId,
+                categoria: categoria,
+                origem: origemDestino
+            };
+            
+            // Registrar transação
+            registrarTransacao(transacao);
+            
+            // Atualizar saldo do banco
+            atualizarSaldoBanco(bancoId, tipo === 'entrada' ? valor : -valor);
+            
+            fecharModal('modalTransacao');
+            carregarTransacoes();
+            Utils.mostrarMensagem('Transação registrada com sucesso!', 'sucesso');
+        }
+        
+        // Abre o modal de detalhes da transação
+        function abrirDetalhesTransacao(transacao) {
+            transacaoSelecionada = transacao;
+            
+            // Buscar banco
+            const bancos = db.getAll('bancos');
+            const banco = bancos.find(b => b.id === transacao.bancoId);
+            
+            // Preencher detalhes
+            document.getElementById('detalhe-tipo').innerHTML = `
+                <i class="fas ${transacao.tipo === 'entrada' ? 'fa-arrow-down icon-entrada' : 'fa-arrow-up icon-saida'}"></i>
+                ${transacao.tipo === 'entrada' ? 'Entrada' : 'Saída'}
+            `;
+            
+            const dataHora = new Date(transacao.data);
+            document.getElementById('detalhe-data-hora').textContent = 
+                `${Utils.formatarData(dataHora)} ${dataHora.toLocaleTimeString('pt-BR')}`;
+            
+            document.getElementById('detalhe-descricao').textContent = transacao.descricao;
+            document.getElementById('detalhe-valor').textContent = Utils.formatarMoeda(transacao.valor);
+            document.getElementById('detalhe-valor').className = transacao.tipo === 'entrada' ? 'positive' : 'negative';
+            document.getElementById('detalhe-banco').textContent = banco ? banco.nome : 'Banco não encontrado';
+            document.getElementById('detalhe-categoria').textContent = transacao.categoria || 'Não categorizado';
+            document.getElementById('detalhe-origem-destino').textContent = transacao.origem || '-';
+            
+            const modal = document.getElementById('modalDetalhesTransacao');
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        }
+        
+        // Exclui a transação selecionada
+        function excluirTransacao() {
+            if (!transacaoSelecionada) return;
+            
+            if (confirm('Tem certeza que deseja excluir esta transação?')) {
+                // Obter todas as transações
+                const transacoes = db.getAll('transacoes');
+                
+                // Filtrar para remover a transação selecionada
+                const novasTransacoes = transacoes.filter(t => t.id !== transacaoSelecionada.id);
+                
+                // Reverter o efeito no saldo do banco
+                const valorReversao = transacaoSelecionada.tipo === 'entrada' ? 
+                    -transacaoSelecionada.valor : transacaoSelecionada.valor;
+                atualizarSaldoBanco(transacaoSelecionada.bancoId, valorReversao);
+                
+                // Salvar as transações atualizadas
+                db.saveAll('transacoes', novasTransacoes);
+                
+                fecharModal('modalDetalhesTransacao');
+                carregarTransacoes();
+                Utils.mostrarMensagem('Transação excluída com sucesso!', 'sucesso');
+            }
+        }
+
+        // Carrega os bancos na tabela
+        function carregarBancos() {
+            const bancos = db.getAll('bancos');
+            const tbody = document.getElementById('tabelaBancos');
+            tbody.innerHTML = '';
+
+            bancos.forEach(banco => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${banco.nome}</td>
+                    <td>${banco.agencia}</td>
+                    <td>${banco.conta}</td>
+                    <td>${banco.tipo}</td>
+                    <td class="${Number(banco.saldo) >= 0 ? 'positive' : 'negative'}">${Utils.formatarMoeda(banco.saldo)}</td>
+                    <td>
+                        <button class="btn btn-primario" onclick="editarBanco(${banco.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-perigo" onclick="excluirBanco(${banco.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // Atualizar o select de filtro de bancos
+            const selectBanco = document.getElementById('filtroBanco');
+            selectBanco.innerHTML = '<option value="todos">Todos os Bancos</option>';
+            
+            bancos.forEach(banco => {
+                const option = document.createElement('option');
+                option.value = banco.id;
+                option.textContent = banco.nome;
+                selectBanco.appendChild(option);
+            });
+            
+            // Carregar transações após carregar bancos
+            carregarTransacoes();
+        }
+        
+        // Carrega bancos em um select
+        function carregarBancosSelect(selectId) {
+            const bancos = db.getAll('bancos');
+            const select = document.getElementById(selectId);
+            select.innerHTML = '';
+            
+            bancos.forEach(banco => {
+                const option = document.createElement('option');
+                option.value = banco.id;
+                option.textContent = banco.nome;
+                select.appendChild(option);
+            });
+        }
+        
+        // Carrega as transações na tabela
+        function carregarTransacoes(filtroTipo = 'todos', filtroBancoId = 'todos') {
+            const transacoes = db.getAll('transacoes') || [];
+            const bancos = db.getAll('bancos');
+            const tbody = document.getElementById('tabelaTransacoes');
+            tbody.innerHTML = '';
+            
+            // Filtrar transações
+            let transacoesFiltradas = transacoes;
+            
+            if (filtroTipo !== 'todos') {
+                transacoesFiltradas = transacoesFiltradas.filter(t => t.tipo === filtroTipo);
+            }
+            
+            if (filtroBancoId !== 'todos') {
+                transacoesFiltradas = transacoesFiltradas.filter(t => t.bancoId === Number(filtroBancoId));
+            }
+            
+            // Ordenar por data (mais recente primeiro)
+            transacoesFiltradas.sort((a, b) => new Date(b.data) - new Date(a.data));
+            
+            transacoesFiltradas.forEach(transacao => {
+                const banco = bancos.find(b => b.id === transacao.bancoId);
+                const tr = document.createElement('tr');
+                tr.onclick = () => abrirDetalhesTransacao(transacao);
+                
+                const dataHora = new Date(transacao.data);
+                const dataFormatada = Utils.formatarData(dataHora);
+                const horaFormatada = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                
+                tr.innerHTML = `
+                    <td>
+                        <i class="fas ${transacao.tipo === 'entrada' ? 'fa-arrow-down icon-entrada' : 'fa-arrow-up icon-saida'}"></i>
+                        ${transacao.tipo === 'entrada' ? 'Entrada' : 'Saída'}
+                    </td>
+                    <td>${dataFormatada} ${horaFormatada}</td>
+                    <td>${transacao.descricao}</td>
+                    <td class="${transacao.tipo === 'entrada' ? 'positive' : 'negative'}">
+                        ${Utils.formatarMoeda(transacao.valor)}
+                    </td>
+                    <td>${banco ? banco.nome : 'Banco não encontrado'}</td>
+                    <td>${transacao.categoria || 'Não categorizado'}</td>
+                    <td>${transacao.origem || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // Mensagem se não houver transações
+            if (transacoesFiltradas.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="7" class="text-center">Nenhuma transação encontrada</td>`;
+                tbody.appendChild(tr);
+            }
+        }
+        
+        // Registra uma transação
+        function registrarTransacao(transacao) {
+            const transacoes = db.getAll('transacoes') || [];
+            
+            // Gerar ID único
+            transacao.id = Date.now();
+            
+            transacoes.push(transacao);
+            db.saveAll('transacoes', transacoes);
+        }
+        
+        // Atualiza o saldo do banco
+        function atualizarSaldoBanco(bancoId, valor) {
+            const bancos = db.getAll('bancos');
+            const banco = bancos.find(b => b.id === bancoId);
+            
+            if (!banco) return;
+            
+            banco.saldo = parseFloat(banco.saldo) + valor;
+            db.save('bancos', banco);
+        }
+        
+        // Configurar filtros
+        document.addEventListener('DOMContentLoaded', function() {
+            // Filtros de tipo (entrada/saída)
+            const filtroItems = document.querySelectorAll('.filtro-item');
+            filtroItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    // Remover classe ativo de todos
+                    filtroItems.forEach(i => i.classList.remove('ativo'));
+                    // Adicionar classe ativo ao clicado
+                    this.classList.add('ativo');
+                    
+                    const filtroTipo = this.getAttribute('data-filtro');
+                    const filtroBancoId = document.getElementById('filtroBanco').value;
+                    carregarTransacoes(filtroTipo, filtroBancoId);
+                });
+            });
+            
+            // Filtro de banco
+            const filtroBanco = document.getElementById('filtroBanco');
+            filtroBanco.addEventListener('change', function() {
+                const filtroTipo = document.querySelector('.filtro-item.ativo').getAttribute('data-filtro');
+                carregarTransacoes(filtroTipo, this.value);
+            });
+            
+            // Inicialização
+            carregarBancos();
+        });
+    </script>
+</body>
+</html> 

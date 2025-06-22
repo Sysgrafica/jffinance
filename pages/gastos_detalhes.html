@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes de Gastos - Controle Financeiro</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="header">
+        <h1 class="header-title">Controle Financeiro</h1>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="../index.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                <li><a href="bancos.html"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="cartoes.html"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="gastos_fixos.html"><i class="fas fa-calendar-alt"></i> Gastos Fixos</a></li>
+                <li><a href="rendas_fixas.html"><i class="fas fa-wallet"></i> Rendas Fixas</a></li>
+                <li><a href="rendas_variaveis.html"><i class="fas fa-dollar-sign"></i> Rendas Variáveis</a></li>
+                <li><a href="gastos_detalhes.html" class="active"><i class="fas fa-money-bill-wave"></i> Todos os Gastos</a></li>
+                <li><a href="rendas_detalhes.html"><i class="fas fa-hand-holding-usd"></i> Todas as Rendas</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>Detalhes de Gastos</h2>
+            <div class="filters">
+                <div class="form-group">
+                    <label for="periodo" class="form-label">Período</label>
+                    <select id="periodo" class="form-control" onchange="filtrarGastos()">
+                        <option value="mes-atual">Mês Atual</option>
+                        <option value="mes-anterior">Mês Anterior</option>
+                        <option value="ultimos-3-meses">Últimos 3 Meses</option>
+                        <option value="ultimos-6-meses">Últimos 6 Meses</option>
+                        <option value="ano-atual">Ano Atual</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="categoria" class="form-label">Categoria</label>
+                    <select id="categoria" class="form-control" onchange="filtrarGastos()">
+                        <option value="todos">Todas as Categorias</option>
+                        <option value="moradia">Moradia</option>
+                        <option value="transporte">Transporte</option>
+                        <option value="alimentacao">Alimentação</option>
+                        <option value="saude">Saúde</option>
+                        <option value="educacao">Educação</option>
+                        <option value="lazer">Lazer</option>
+                        <option value="outros">Outros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tipo" class="form-label">Tipo</label>
+                    <select id="tipo" class="form-control" onchange="filtrarGastos()">
+                        <option value="todos">Todos os Tipos</option>
+                        <option value="fixo">Gastos Fixos</option>
+                        <option value="variavel">Gastos Variáveis</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overview-grid">
+                <div class="overview-item total-expenses">
+                    <h3>Total de Gastos</h3>
+                    <p id="total-gastos" class="amount negative">R$ 0,00</p>
+                </div>
+                <div class="overview-item">
+                    <h3>Média Mensal</h3>
+                    <p id="media-mensal" class="amount">R$ 0,00</p>
+                </div>
+                <div class="overview-item">
+                    <h3>Maior Gasto</h3>
+                    <p id="maior-gasto" class="amount">R$ 0,00</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="grafico-gastos"></canvas>
+            </div>
+
+            <div id="lista-gastos" class="item-list">
+                <!-- Lista de gastos será preenchida via JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Controle Financeiro. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/utils.js"></script>
+    <script>
+        let graficoGastos = null;
+
+        function carregarGastos() {
+            const periodo = document.getElementById('periodo').value;
+            const categoria = document.getElementById('categoria').value;
+            const tipo = document.getElementById('tipo').value;
+
+            // Obtém todos os gastos
+            let gastos = [];
+            if (tipo === 'fixo' || tipo === 'todos') {
+                gastos = gastos.concat(Database.getGastosFixos());
+            }
+            if (tipo === 'variavel' || tipo === 'todos') {
+                gastos = gastos.concat(Database.getAll(Database.KEYS.GASTOS));
+            }
+
+            // Aplica filtros
+            gastos = filtrarPorPeriodo(gastos, periodo);
+            if (categoria !== 'todos') {
+                gastos = gastos.filter(gasto => gasto.categoria === categoria);
+            }
+
+            // Atualiza estatísticas
+            atualizarEstatisticas(gastos);
+
+            // Atualiza gráfico
+            atualizarGrafico(gastos);
+
+            // Atualiza lista
+            const listaGastos = document.getElementById('lista-gastos');
+            listaGastos.innerHTML = '';
+
+            gastos.sort((a, b) => new Date(b.data || b.diaVencimento) - new Date(a.data || a.diaVencimento))
+                 .forEach(gasto => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${gasto.descricao}</strong>
+                        <p>Categoria: ${gasto.categoria}</p>
+                        <p>Data: ${gasto.data ? Utils.formatarData(gasto.data) : `Dia ${gasto.diaVencimento}`}</p>
+                        ${gasto.formaPagamento ? `<p>Forma de Pagamento: ${gasto.formaPagamento}</p>` : ''}
+                    </div>
+                    <div>
+                        <span class="amount negative">${Utils.formatarMoeda(gasto.valor)}</span>
+                    </div>
+                `;
+                listaGastos.appendChild(item);
+            });
+        }
+
+        function filtrarPorPeriodo(gastos, periodo) {
+            const hoje = new Date();
+            const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+
+            switch (periodo) {
+                case 'mes-atual':
+                    return gastos.filter(gasto => {
+                        const data = new Date(gasto.data || `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}-${gasto.diaVencimento.toString().padStart(2, '0')}`);
+                        return data >= inicioMes && data <= fimMes;
+                    });
+                case 'mes-anterior':
+                    const inicioMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+                    const fimMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+                    return gastos.filter(gasto => {
+                        const data = new Date(gasto.data || `${inicioMesAnterior.getFullYear()}-${(inicioMesAnterior.getMonth() + 1).toString().padStart(2, '0')}-${gasto.diaVencimento.toString().padStart(2, '0')}`);
+                        return data >= inicioMesAnterior && data <= fimMesAnterior;
+                    });
+                case 'ultimos-3-meses':
+                    const inicio3Meses = new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1);
+                    return gastos.filter(gasto => {
+                        const data = new Date(gasto.data || `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}-${gasto.diaVencimento.toString().padStart(2, '0')}`);
+                        return data >= inicio3Meses && data <= fimMes;
+                    });
+                case 'ultimos-6-meses':
+                    const inicio6Meses = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1);
+                    return gastos.filter(gasto => {
+                        const data = new Date(gasto.data || `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}-${gasto.diaVencimento.toString().padStart(2, '0')}`);
+                        return data >= inicio6Meses && data <= fimMes;
+                    });
+                case 'ano-atual':
+                    const inicioAno = new Date(hoje.getFullYear(), 0, 1);
+                    const fimAno = new Date(hoje.getFullYear(), 11, 31);
+                    return gastos.filter(gasto => {
+                        const data = new Date(gasto.data || `${hoje.getFullYear()}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}-${gasto.diaVencimento.toString().padStart(2, '0')}`);
+                        return data >= inicioAno && data <= fimAno;
+                    });
+                default:
+                    return gastos;
+            }
+        }
+
+        function atualizarEstatisticas(gastos) {
+            const totalElement = document.getElementById('total-gastos');
+            const mediaElement = document.getElementById('media-mensal');
+            const maiorGastoElement = document.getElementById('maior-gasto');
+
+            const total = gastos.reduce((acc, gasto) => acc + parseFloat(gasto.valor), 0);
+            const media = total / (gastos.length || 1);
+            const maiorGasto = gastos.reduce((max, gasto) => Math.max(max, parseFloat(gasto.valor)), 0);
+
+            totalElement.textContent = Utils.formatarMoeda(total);
+            mediaElement.textContent = Utils.formatarMoeda(media);
+            maiorGastoElement.textContent = Utils.formatarMoeda(maiorGasto);
+        }
+
+        function atualizarGrafico(gastos) {
+            const ctx = document.getElementById('grafico-gastos').getContext('2d');
+            
+            // Agrupa gastos por categoria
+            const gastosPorCategoria = gastos.reduce((acc, gasto) => {
+                acc[gasto.categoria] = (acc[gasto.categoria] || 0) + parseFloat(gasto.valor);
+                return acc;
+            }, {});
+
+            const dados = {
+                labels: Object.keys(gastosPorCategoria),
+                datasets: [{
+                    data: Object.values(gastosPorCategoria),
+                    backgroundColor: [
+                        '#e74c3c',
+                        '#3498db',
+                        '#2ecc71',
+                        '#f1c40f',
+                        '#9b59b6',
+                        '#e67e22',
+                        '#95a5a6'
+                    ]
+                }]
+            };
+
+            if (graficoGastos) {
+                graficoGastos.destroy();
+            }
+
+            graficoGastos = new Chart(ctx, {
+                type: 'doughnut',
+                data: dados,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function filtrarGastos() {
+            carregarGastos();
+        }
+
+        // Carrega os gastos ao iniciar a página
+        document.addEventListener('DOMContentLoaded', carregarGastos);
+    </script>
+</body>
+</html> 

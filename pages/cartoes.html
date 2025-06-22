@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartões - Finnairaceora</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <style>
+        /* Garantir que o modal seja exibido corretamente */
+        .modal.active {
+            display: flex !important;
+        }
+        
+        /* Estilos para o seletor de mês */
+        .mes-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .mes-selector button {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: var(--cor-primaria);
+        }
+        
+        .mes-selector span {
+            font-weight: 500;
+            min-width: 150px;
+            text-align: center;
+        }
+        
+        /* Estilo para o card de fatura */
+        .card-fatura {
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .card-fatura.active {
+            display: block;
+        }
+        
+        .fatura-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .fatura-total {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .fatura-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .fatura-status .btn-pagar {
+            padding: 5px 10px;
+            font-size: 0.9rem;
+        }
+        
+        .parcela-info {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .parcela-info:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <div class="nav-logo">
+                <i class="fas fa-wallet"></i> Finnairaceora
+            </div>
+            <ul class="nav-menu">
+                <li><a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="bancos.html" class="nav-link"><i class="fas fa-university"></i> Bancos</a></li>
+                <li><a href="cartoes.html" class="nav-link active"><i class="fas fa-credit-card"></i> Cartões</a></li>
+                <li><a href="gastos.html" class="nav-link"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
+                <li><a href="rendas.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
+                <li><a href="settings.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card mb-1">
+            <div class="card-header">
+                <h2 class="card-title">Gerenciar Cartões</h2>
+                <button class="btn btn-primario" onclick="abrirModalCartao()">
+                    <i class="fas fa-plus"></i> Novo Cartão
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nome do Cartão</th>
+                            <th>Número Final</th>
+                            <th>Limite</th>
+                            <th>Fatura Atual</th>
+                            <th>Fechamento</th>
+                            <th>Vencimento</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaCartoes"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Fatura detalhada do cartão selecionado -->
+        <div id="faturaDetalhada" class="card" style="display: none;">
+            <div class="card-header">
+                <h3 class="card-title">Fatura do Cartão: <span id="nomeCartaoFatura"></span></h3>
+                <div class="mes-selector">
+                    <button id="mesAnterior" onclick="mudarMes(-1)"><i class="fas fa-chevron-left"></i></button>
+                    <span id="mesSelecionado">Mês Atual</span>
+                    <button id="mesProximo" onclick="mudarMes(1)"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div id="conteudoFatura">
+                <div class="fatura-header">
+                    <div>Valor total da fatura:</div>
+                    <div class="fatura-status">
+                        <div id="totalFatura" class="fatura-total negative">R$ 0,00</div>
+                        <div id="statusFatura"></div>
+                    </div>
+                </div>
+                <div id="itensFatura"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Compras do Cartão</h3>
+                <button class="btn btn-primario" onclick="abrirModalCompra()">
+                    <i class="fas fa-plus"></i> Nova Compra
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Valor</th>
+                            <th>Parcelas</th>
+                            <th>Cartão</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaCompras"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para adicionar/editar cartão -->
+    <div id="modalCartao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTituloCartao">Novo Cartão</h3>
+                <span class="modal-close" onclick="fecharModalCartao()">&times;</span>
+            </div>
+            <form id="formCartao" onsubmit="salvarCartao(event)">
+                <input type="hidden" id="cartaoId">
+                <div class="form-group">
+                    <label class="form-label" for="nomeCartaoInput">Nome do Cartão*</label>
+                    <input type="text" id="nomeCartaoInput" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="numeroFinal">Últimos 4 dígitos*</label>
+                    <input type="text" id="numeroFinal" class="form-input" maxlength="4" pattern="[0-9]{4}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="limite">Limite*</label>
+                    <input type="number" id="limite" class="form-input" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="vencimento">Dia do Vencimento*</label>
+                    <input type="number" id="vencimento" class="form-input" min="1" max="31" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="fechamento">Dia do Fechamento*</label>
+                    <input type="number" id="fechamento" class="form-input" min="1" max="31" required>
+                    <small class="form-help">Dia em que a fatura fecha e novas compras vão para o próximo mês</small>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primario">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                    <button type="button" class="btn btn-perigo" onclick="fecharModalCartao()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Pagamento de Fatura -->
+    <div id="modalPagamento" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirmar Pagamento de Fatura</h3>
+                <span class="modal-close" onclick="fecharModal('modalPagamento')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Deseja confirmar o pagamento da fatura do cartão <strong id="nomeCartaoPagamento"></strong>?</p>
+                <div class="form-group">
+                    <label class="form-label" for="dataPagamento">Data do Pagamento:</label>
+                    <input type="date" id="dataPagamento" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="bancoSelecionado">Banco:</label>
+                    <select id="bancoSelecionado" class="form-input" required>
+                        <option value="">Selecione um banco</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="valorPagamento">Valor:</label>
+                    <input type="number" id="valorPagamento" class="form-input" step="0.01" required>
+                </div>
+                <input type="hidden" id="cartaoPagamentoId">
+                <div class="form-group mt-2">
+                    <button id="btnConfirmarPagamento" class="btn btn-primario">
+                        <i class="fas fa-check"></i> Confirmar
+                    </button>
+                    <button type="button" class="btn btn-perigo" onclick="fecharModal('modalPagamento')">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para adicionar/editar compra -->
+    <div id="modalCompra" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTituloCompra">Nova Compra</h3>
+                <span class="modal-close" onclick="fecharModalCompra()">&times;</span>
+            </div>
+            <form id="formCompra" onsubmit="salvarCompra(event)">
+                <input type="hidden" id="compraId">
+                <div class="form-group">
+                    <label class="form-label" for="cartaoCompra">Cartão*</label>
+                    <select id="cartaoCompra" class="form-input" required></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="descricaoCompra">Descrição*</label>
+                    <input type="text" id="descricaoCompra" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="valorCompra">Valor*</label>
+                    <input type="number" id="valorCompra" class="form-input" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="dataCompra">Data*</label>
+                    <input type="date" id="dataCompra" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="parcelas">Número de Parcelas*</label>
+                    <input type="number" id="parcelas" class="form-input" min="1" value="1" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primario">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                    <button type="button" class="btn btn-perigo" onclick="fecharModalCompra()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
+    </footer>
+
+    <!-- Carregar scripts sem usar módulos ES6 -->
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/database.js"></script>
+    <script>
+        // Variáveis globais
+        let cartaoSelecionado = null;
+        let mesAtualOffset = 0;
+
+        // Funções de cálculo de fatura
+        function calcularDataVencimentoFatura(dataCompra, diaFechamento, diaVencimento) {
+            let anoFatura = dataCompra.getFullYear();
+            let mesFatura = dataCompra.getMonth();
+
+            if (dataCompra.getDate() > diaFechamento) {
+                mesFatura++;
+            }
+
+            let anoVencimento = anoFatura;
+            let mesVencimento = mesFatura;
+
+            if (diaVencimento < diaFechamento) {
+                mesVencimento++;
+            }
+            
+            const dataVencimento = new Date(anoVencimento, mesVencimento, diaVencimento);
+            
+            if (dataVencimento.getMonth() !== (mesVencimento % 12)) {
+                dataVencimento.setFullYear(dataVencimento.getFullYear(), mesVencimento, diaVencimento);
+            }
+            
+            return dataVencimento;
+        }
+
+        function calcularFatura(cartao, mes, ano) {
+            const todasCompras = db.getAll('compras');
+            const comprasDoCartao = todasCompras.filter(c => c.cartaoId === cartao.id);
+            let faturaDoMes = 0;
+
+            comprasDoCartao.forEach(compra => {
+                const dataCompra = new Date(compra.data);
+                const valorParcela = Number(compra.valor) / Number(compra.parcelas);
+
+                const dataPrimeiroVencimento = calcularDataVencimentoFatura(
+                    dataCompra,
+                    cartao.fechamento,
+                    cartao.vencimento
+                );
+
+                for (let i = 0; i < compra.parcelas; i++) {
+                    const dataVencimentoParcela = new Date(
+                        dataPrimeiroVencimento.getFullYear(),
+                        dataPrimeiroVencimento.getMonth() + i,
+                        dataPrimeiroVencimento.getDate()
+                    );
+
+                    if (dataVencimentoParcela.getFullYear() === ano && dataVencimentoParcela.getMonth() === mes) {
+                        faturaDoMes += valorParcela;
+                        break;
+                    }
+                }
+            });
+
+            return faturaDoMes;
+        }
+
+        // Funções de UI
+        function carregarCartoes() {
+            const cartoes = db.getAll('cartoes');
+            const tbody = document.getElementById('tabelaCartoes');
+            tbody.innerHTML = '';
+
+            const hoje = new Date();
+            const mes = hoje.getMonth();
+            const ano = hoje.getFullYear();
+
+            cartoes.forEach(cartao => {
+                const faturaAtual = calcularFatura(cartao, mes, ano);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><a href="#" onclick="visualizarFatura(${cartao.id})">${cartao.nome}</a></td>
+                    <td>**** ${cartao.numeroFinal}</td>
+                    <td>${Utils.formatarMoeda(cartao.limite)}</td>
+                    <td class="negative">${Utils.formatarMoeda(faturaAtual)}</td>
+                    <td>Dia ${cartao.fechamento}</td>
+                    <td>Dia ${cartao.vencimento}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="visualizarFatura(${cartao.id})">
+                            <i class="fas fa-file-invoice-dollar"></i> Fatura
+                        </button>
+                        <button class="btn btn-sm btn-primario" onclick="editarCartao(${cartao.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-perigo" onclick="excluirCartao(${cartao.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function visualizarFatura(id) {
+            cartaoSelecionado = db.getAll('cartoes').find(c => c.id === id);
+            if (!cartaoSelecionado) return;
+
+            document.getElementById('faturaDetalhada').style.display = 'block';
+            document.getElementById('nomeCartaoFatura').textContent = cartaoSelecionado.nome;
+            
+            mesAtualOffset = 0; // Reseta para o mês atual
+            atualizarFaturaDetalhada();
+            
+            document.getElementById('faturaDetalhada').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function atualizarFaturaDetalhada() {
+            if (!cartaoSelecionado) return;
+
+            const hoje = new Date();
+            const mesReferencia = new Date(hoje.getFullYear(), hoje.getMonth() + mesAtualOffset, 1);
+            const mes = mesReferencia.getMonth();
+            const ano = mesReferencia.getFullYear();
+
+            document.getElementById('mesSelecionado').textContent = mesReferencia.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+            const valorFatura = calcularFatura(cartaoSelecionado, mes, ano);
+            document.getElementById('totalFatura').textContent = Utils.formatarMoeda(valorFatura);
+
+            const faturaPaga = cartaoSelecionado.faturasPagas && cartaoSelecionado.faturasPagas.some(fp => {
+                const dataPagamento = new Date(fp.dataPagamento);
+                return dataPagamento.getMonth() === mes && dataPagamento.getFullYear() === ano;
+            });
+            
+            const statusContainer = document.getElementById('statusFatura');
+            if (faturaPaga) {
+                statusContainer.innerHTML = `<span class="positive"><i class="fas fa-check-circle"></i> Fatura Paga</span>`;
+                document.getElementById('totalFatura').classList.remove('negative');
+                document.getElementById('totalFatura').classList.add('positive');
+            } else if (valorFatura > 0) {
+                statusContainer.innerHTML = `<button class="btn btn-sm btn-pagar" onclick="abrirModalPagamento()">Pagar</button>`;
+                document.getElementById('totalFatura').classList.remove('positive');
+                document.getElementById('totalFatura').classList.add('negative');
+            } else {
+                statusContainer.innerHTML = '';
+            }
+
+            const itensFaturaContainer = document.getElementById('itensFatura');
+            itensFaturaContainer.innerHTML = '';
+            const compras = db.getAll('compras').filter(c => c.cartaoId === cartaoSelecionado.id);
+
+            compras.forEach(compra => {
+                const dataCompra = new Date(compra.data);
+                const valorParcela = Number(compra.valor) / Number(compra.parcelas);
+
+                const dataPrimeiroVencimento = calcularDataVencimentoFatura(
+                    dataCompra,
+                    cartaoSelecionado.fechamento,
+                    cartaoSelecionado.vencimento
+                );
+
+                for (let i = 0; i < compra.parcelas; i++) {
+                    const dataVencimentoParcela = new Date(
+                        dataPrimeiroVencimento.getFullYear(),
+                        dataPrimeiroVencimento.getMonth() + i,
+                        dataPrimeiroVencimento.getDate()
+                    );
+                    
+                    if (dataVencimentoParcela.getFullYear() === ano && dataVencimentoParcela.getMonth() === mes) {
+                        const div = document.createElement('div');
+                        div.className = 'parcela-info';
+                        div.innerHTML = `
+                            <span>${compra.descricao} (Parc. ${i + 1}/${compra.parcelas})</span>
+                            <span class="negative">${Utils.formatarMoeda(valorParcela)}</span>
+                        `;
+                        itensFaturaContainer.appendChild(div);
+                        break; 
+                    }
+                }
+            });
+            
+            if (itensFaturaContainer.innerHTML === '') {
+                itensFaturaContainer.innerHTML = '<p class="text-center">Nenhuma compra nesta fatura.</p>';
+            }
+        }
+
+        function mudarMes(direcao) {
+            mesAtualOffset += direcao;
+            atualizarFaturaDetalhada();
+        }
+
+        // Funções para Modal de Pagamento
+        function abrirModalPagamento() {
+            if (!cartaoSelecionado) return;
+            
+            const hoje = new Date();
+            const mesReferencia = new Date(hoje.getFullYear(), hoje.getMonth() + mesAtualOffset, 1);
+            const mes = mesReferencia.getMonth();
+            const ano = mesReferencia.getFullYear();
+            const valorFatura = calcularFatura(cartaoSelecionado, mes, ano);
+
+            document.getElementById('nomeCartaoPagamento').textContent = cartaoSelecionado.nome;
+            document.getElementById('valorPagamento').value = valorFatura.toFixed(2);
+            document.getElementById('cartaoPagamentoId').value = cartaoSelecionado.id;
+            document.getElementById('dataPagamento').valueAsDate = new Date();
+
+            carregarBancosSelect('bancoSelecionado');
+            document.getElementById('modalPagamento').style.display = 'flex';
+        }
+
+        function carregarBancosSelect(selectId) {
+            const select = document.getElementById(selectId);
+            const bancos = db.getAll('bancos');
+            select.innerHTML = '<option value="">Selecione um banco</option>';
+            bancos.forEach(banco => {
+                select.innerHTML += `<option value="${banco.id}">${banco.nome}</option>`;
+            });
+        }
+        
+        function confirmarPagamentoFatura() {
+            const cartaoId = parseInt(document.getElementById('cartaoPagamentoId').value);
+            const dataPagamento = document.getElementById('dataPagamento').value;
+            const bancoId = parseInt(document.getElementById('bancoSelecionado').value);
+            const valor = parseFloat(document.getElementById('valorPagamento').value);
+            
+            if (!cartaoId || !dataPagamento || !bancoId || isNaN(valor)) {
+                Utils.mostrarMensagem('Por favor, preencha todos os campos.', 'erro');
+                return;
+            }
+            
+            const cartao = db.getAll('cartoes').find(c => c.id === cartaoId);
+            if (!cartao) return;
+            
+            if (!cartao.faturasPagas) {
+                cartao.faturasPagas = [];
+            }
+            
+            cartao.faturasPagas.push({ dataPagamento, valor, bancoId });
+            db.save('cartoes', cartao);
+            
+            atualizarSaldoBanco(bancoId, -valor);
+            
+            registrarTransacao({
+                tipo: 'saida',
+                descricao: `Pagamento de fatura - ${cartao.nome}`,
+                valor: valor,
+                data: dataPagamento,
+                bancoId: bancoId,
+                categoria: 'Fatura de Cartão'
+            });
+            
+            fecharModal('modalPagamento');
+            atualizarFaturaDetalhada();
+            carregarCartoes(); // Recarrega a tabela de cartões
+            Utils.mostrarMensagem('Pagamento registrado com sucesso!', 'sucesso');
+        }
+        
+        function atualizarSaldoBanco(bancoId, valor) {
+            const banco = db.getAll('bancos').find(b => b.id === bancoId);
+            if (banco) {
+                banco.saldo = parseFloat(banco.saldo) + valor;
+                db.save('bancos', banco);
+            }
+        }
+        
+        function registrarTransacao(transacao) {
+            const transacoes = db.getAll('transacoes') || [];
+            transacao.id = Date.now();
+            transacoes.push(transacao);
+            db.saveAll('transacoes', transacoes);
+        }
+
+        function fecharModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        // Funções para CRUD de Cartão
+        function abrirModalCartao(id = null) {
+            const modal = document.getElementById('modalCartao');
+            const titulo = document.getElementById('modalTituloCartao');
+            const form = document.getElementById('formCartao');
+            form.reset();
+
+            if (id) {
+                const cartao = db.getAll('cartoes').find(c => c.id === id);
+                if (cartao) {
+                    titulo.textContent = 'Editar Cartão';
+                    document.getElementById('cartaoId').value = cartao.id;
+                    document.getElementById('nomeCartaoInput').value = cartao.nome;
+                    document.getElementById('numeroFinal').value = cartao.numeroFinal;
+                    document.getElementById('limite').value = cartao.limite;
+                    document.getElementById('vencimento').value = cartao.vencimento;
+                    document.getElementById('fechamento').value = cartao.fechamento;
+                }
+            } else {
+                titulo.textContent = 'Novo Cartão';
+                document.getElementById('cartaoId').value = '';
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function fecharModalCartao() {
+            fecharModal('modalCartao');
+        }
+
+        function salvarCartao(event) {
+            event.preventDefault();
+            const id = document.getElementById('cartaoId').value;
+            const cartaoData = {
+                nome: document.getElementById('nomeCartaoInput').value,
+                numeroFinal: document.getElementById('numeroFinal').value,
+                limite: Number(document.getElementById('limite').value),
+                vencimento: Number(document.getElementById('vencimento').value),
+                fechamento: Number(document.getElementById('fechamento').value)
+            };
+
+            if (id) {
+                db.update('cartoes', Number(id), cartaoData);
+            } else {
+                db.insert('cartoes', cartaoData);
+            }
+
+            fecharModalCartao();
+            carregarCartoes();
+            Utils.mostrarMensagem('Cartão salvo com sucesso!', 'sucesso');
+        }
+
+        function editarCartao(id) {
+            abrirModalCartao(id);
+        }
+
+        function excluirCartao(id) {
+            if (confirm('Tem certeza que deseja excluir este cartão? Todas as compras associadas também serão removidas.')) {
+                db.delete('cartoes', id);
+                
+                const compras = db.getAll('compras').filter(c => c.cartaoId !== id);
+                db.saveAll('compras', compras);
+
+                carregarCartoes();
+                carregarCompras();
+                Utils.mostrarMensagem('Cartão excluído com sucesso!', 'sucesso');
+            }
+        }
+        
+        // Funções para CRUD de Compra
+        function carregarCompras() {
+            const compras = db.getAll('compras');
+            const cartoes = db.getAll('cartoes');
+            const tbody = document.getElementById('tabelaCompras');
+            tbody.innerHTML = '';
+            
+            compras.forEach(compra => {
+                const cartao = cartoes.find(c => c.id === compra.cartaoId);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${Utils.formatarData(new Date(compra.data))}</td>
+                    <td>${compra.descricao}</td>
+                    <td>${Utils.formatarMoeda(compra.valor)}</td>
+                    <td>${compra.parcelas}x</td>
+                    <td>${cartao ? cartao.nome : 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primario" onclick="editarCompra(${compra.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-perigo" onclick="excluirCompra(${compra.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function abrirModalCompra(id = null) {
+            const modal = document.getElementById('modalCompra');
+            const titulo = document.getElementById('modalTituloCompra');
+            const form = document.getElementById('formCompra');
+            form.reset();
+
+            carregarCartoesSelect('cartaoCompra');
+
+            if (id) {
+                const compra = db.getAll('compras').find(c => c.id === id);
+                if (compra) {
+                    titulo.textContent = 'Editar Compra';
+                    document.getElementById('compraId').value = compra.id;
+                    document.getElementById('cartaoCompra').value = compra.cartaoId;
+                    document.getElementById('descricaoCompra').value = compra.descricao;
+                    document.getElementById('valorCompra').value = compra.valor;
+                    document.getElementById('dataCompra').value = compra.data.split('T')[0];
+                    document.getElementById('parcelas').value = compra.parcelas;
+                }
+            } else {
+                titulo.textContent = 'Nova Compra';
+                document.getElementById('compraId').value = '';
+                document.getElementById('dataCompra').valueAsDate = new Date();
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function fecharModalCompra() {
+            fecharModal('modalCompra');
+        }
+
+        function salvarCompra(event) {
+            event.preventDefault();
+            const id = document.getElementById('compraId').value;
+            const compraData = {
+                cartaoId: Number(document.getElementById('cartaoCompra').value),
+                descricao: document.getElementById('descricaoCompra').value,
+                valor: Number(document.getElementById('valorCompra').value),
+                data: document.getElementById('dataCompra').value,
+                parcelas: Number(document.getElementById('parcelas').value)
+            };
+
+            if (id) {
+                db.update('compras', Number(id), compraData);
+            } else {
+                db.insert('compras', compraData);
+            }
+
+            fecharModalCompra();
+            carregarCompras();
+            carregarCartoes(); // Atualiza fatura na tabela de cartões
+            Utils.mostrarMensagem('Compra salva com sucesso!', 'sucesso');
+        }
+
+        function editarCompra(id) {
+            abrirModalCompra(id);
+        }
+
+        function excluirCompra(id) {
+            if (confirm('Tem certeza que deseja excluir esta compra?')) {
+                db.delete('compras', id);
+                carregarCompras();
+                carregarCartoes();
+                Utils.mostrarMensagem('Compra excluída com sucesso!', 'sucesso');
+            }
+        }
+        
+        function carregarCartoesSelect(selectId) {
+            const select = document.getElementById(selectId);
+            const cartoes = db.getAll('cartoes');
+            select.innerHTML = '';
+            cartoes.forEach(cartao => {
+                select.innerHTML += `<option value="${cartao.id}">${cartao.nome}</option>`;
+            });
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarCartoes();
+            carregarCompras();
+            
+            document.getElementById('btnConfirmarPagamento').addEventListener('click', confirmarPagamentoFatura);
+        });
+    </script>
+</body>
+</html> 
