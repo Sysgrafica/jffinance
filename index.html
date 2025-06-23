@@ -28,6 +28,9 @@
                         <span class="notification-badge" id="notificationCount">0</span>
                     </button>
                 </li>
+                <li id="userInfo">
+                    <!-- O conteúdo será preenchido pelo script de autenticação -->
+                </li>
             </ul>
 
             <!-- Painel de Notificações -->
@@ -141,30 +144,13 @@
                     <!-- As metas de gastos serão inseridas aqui dinamicamente -->
                 </div>
             </div>
-        </div>
 
-        <!-- Metas de Renda -->
-        <div class="metas-rendas mt-2">
-            <h3>Metas de Renda do Mês</h3>
-            <div id="metasRendasContainer" class="grid grid-2">
-                <!-- As metas de renda serão inseridas aqui dinamicamente -->
-            </div>
-        </div>
-
-        <!-- Gráficos -->
-        <div class="grid grid-2">
-            <div class="card">
-                <div class="card-header">
-                    <h3>Gastos vs. Rendas</h3>
+            <!-- Metas de Renda -->
+            <div class="metas-renda">
+                <h3>Metas de Renda do Mês</h3>
+                <div id="metasRendaContainer" class="grid grid-2">
+                    <!-- As metas de renda serão inseridas aqui dinamicamente -->
                 </div>
-                <canvas id="graficoGastosRendas" class="grafico"></canvas>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h3>Distribuição de Gastos</h3>
-                </div>
-                <canvas id="graficoDistribuicaoGastos" class="grafico"></canvas>
             </div>
         </div>
 
@@ -331,9 +317,9 @@
                     <div class="upload-info">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>Arraste e solte a imagem aqui ou</p>
-                                        <button class="btn btn-primario" onclick="document.getElementById('inputComprovante').click()">
-                    Escolher Arquivo
-                </button>
+                        <button class="btn btn-primario" onclick="document.getElementById('inputComprovante').click()">
+                            Escolher Arquivo
+                        </button>
                     </div>
                     <div class="preview-area" id="previewArea" hidden>
                         <img id="previewImage" src="" alt="Preview do comprovante">
@@ -362,8 +348,17 @@
         <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
     </footer>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Nossa inicialização do Firebase -->
+    <script src="assets/js/firebase-init.js"></script>
+
     <!-- Carregar scripts sem usar módulos ES6 -->
     <script src="assets/js/utils.js"></script>
+    <script src="assets/js/auth.js"></script>
     <script src="assets/js/database.js"></script>
     <script src="assets/js/dashboard.js"></script>
     <script src="assets/js/main.js"></script>
@@ -382,63 +377,10 @@
                 mesGraficoElement.value = `${anoAtual}-${mesAtual}`;
             }
             
-            atualizarGraficos();
-            
             inicializarModais();
             carregarMetasGastos();
             carregarMetasRenda();
         });
-
-        function carregarMetasRenda() {
-            const container = document.getElementById('metasRendasContainer');
-            const metas = JSON.parse(localStorage.getItem('metas_rendas')) || {};
-            const categorias = db.getAll('categorias_rendas') || [];
-            
-            // Busca todas as rendas recebidas (com status 'Recebido')
-            const rendas = db.getAll('rendas') || [];
-            const rendasRecebidas = rendas.filter(r => r.status === 'Recebido');
-
-            container.innerHTML = '';
-            const metasIds = Object.keys(metas);
-
-            if (metasIds.length === 0) {
-                container.innerHTML = '<p class="text-center col-span-2">Nenhuma meta de renda definida. Adicione na página de Configurações.</p>';
-                return;
-            }
-
-            metasIds.forEach(categoriaId => {
-                const categoria = categorias.find(c => c.id == categoriaId);
-                if (!categoria) return;
-
-                const metaValor = metas[categoriaId];
-                const rendasDaCategoria = rendasRecebidas.filter(r => r.categoriaId == categoriaId);
-                const totalRecebido = rendasDaCategoria.reduce((acc, renda) => acc + renda.valor, 0);
-                const percentual = metaValor > 0 ? (totalRecebido / metaValor) * 100 : 0;
-
-                const metaCard = `
-                    <div class="meta-card">
-                        <div class="meta-header">
-                            <i class="${categoria.icone || 'fas fa-dollar-sign'}"></i>
-                            <h4>${categoria.nome}</h4>
-                        </div>
-                        <div class="meta-valor">
-                            <span>Meta:</span>
-                            <span class="meta-limite positive">${Utils.formatarMoeda(metaValor)}</span>
-                        </div>
-                        <div class="meta-progresso">
-                            <div class="barra-progresso">
-                                <div class="progresso positive-bg" style="width: ${percentual > 100 ? 100 : percentual}%"></div>
-                            </div>
-                            <div class="meta-info">
-                                <span class="positive">${Utils.formatarMoeda(totalRecebido)}</span>
-                                <span>${percentual.toFixed(0)}%</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += metaCard;
-            });
-        }
 
         function carregarMetasGastos() {
             const container = document.getElementById('metasGastosContainer');
@@ -452,49 +394,132 @@
                 localStorage.setItem('metas_gastos', JSON.stringify(metas));
             }
 
-            const gastos = db.getAll('gastos_variaveis') || []; 
-            
-            container.innerHTML = ''; 
+            // Obter gastos do banco de dados
+            db.getAll('gastos_variaveis')
+                .then(gastos => {
+                    container.innerHTML = ''; 
 
-            if (metas.length === 0) {
-                container.innerHTML = '<p class="text-center col-span-2">Nenhuma meta definida. Adicione na página de Configurações.</p>';
-                return;
+                    if (metas.length === 0) {
+                        container.innerHTML = '<p class="text-center col-span-2">Nenhuma meta definida. Adicione na página de Configurações.</p>';
+                        return;
+                    }
+
+                    // Garantir que gastos é um array
+                    const gastosArray = Array.isArray(gastos) ? gastos : [];
+
+                    metas.forEach(meta => {
+                        const nomeMetaNormalizado = meta.nome.toLowerCase().replace('gastos ', '');
+                        
+                        const gastosDaMeta = gastosArray.filter(g => {
+                            // Verificar se g existe e tem categoriaId
+                            if (!g || !g.categoriaId) return false;
+                            
+                            // Obter a categoria e verificar se ela existe
+                            const categoria = db.getById('categorias_gastos', g.categoriaId);
+                            return categoria && categoria.nome && categoria.nome.toLowerCase().includes(nomeMetaNormalizado);
+                        });
+
+                        // Calcular o total gasto com tratamento de erro
+                        const totalGasto = gastosDaMeta.reduce((acc, gasto) => {
+                            // Verificar se o gasto tem um valor válido
+                            const valorGasto = gasto && typeof gasto.valor === 'number' ? gasto.valor : 0;
+                            return acc + valorGasto;
+                        }, 0);
+                        
+                        const percentual = meta.valor > 0 ? (totalGasto / meta.valor) * 100 : 0;
+
+                        const metaCard = `
+                            <div class="meta-card">
+                                <div class="meta-header">
+                                    <i class="${meta.icone || 'fas fa-star'}"></i>
+                                    <h4>${meta.nome}</h4>
+                                </div>
+                                <div class="meta-valor">
+                                    <span>Meta:</span>
+                                    <span class="meta-limite">${Utils.formatarMoeda(meta.valor)}</span>
+                                </div>
+                                <div class="meta-progresso">
+                                    <div class="barra-progresso">
+                                        <div class="progresso" style="width: ${percentual > 100 ? 100 : percentual}%"></div>
+                                    </div>
+                                    <div class="meta-info">
+                                        <span>${Utils.formatarMoeda(totalGasto)}</span>
+                                        <span>${percentual.toFixed(0)}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.innerHTML += metaCard;
+                    });
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar gastos para metas:", error);
+                    container.innerHTML = '<p class="text-center col-span-2">Erro ao carregar metas de gastos.</p>';
+                });
+        }
+
+        function carregarMetasRenda() {
+            const container = document.getElementById('metasRendaContainer');
+            let metas = JSON.parse(localStorage.getItem('metas_renda'));
+            if (!metas) {
+                metas = [
+                    { id: 1, nome: 'Renda Principal', icone: 'fas fa-briefcase', valor: 3000.00 },
+                    { id: 2, nome: 'Renda Extra', icone: 'fas fa-coins', valor: 1000.00 }
+                ];
+                localStorage.setItem('metas_renda', JSON.stringify(metas));
             }
 
-            metas.forEach(meta => {
-                const nomeMetaNormalizado = meta.nome.toLowerCase().replace('gastos ', '');
-                
-                const gastosDaMeta = gastos.filter(g => {
-                    const categoria = db.getById('categorias_gastos', g.categoriaId);
-                    return categoria && categoria.nome.toLowerCase().includes(nomeMetaNormalizado);
+            // Obter rendas do banco de dados
+            db.getAll('rendas')
+                .then(rendas => {
+                    container.innerHTML = '';
+                    if (metas.length === 0) {
+                        container.innerHTML = '<p class="text-center col-span-2">Nenhuma meta de renda definida. Adicione na página de Configurações.</p>';
+                        return;
+                    }
+                    // Garantir que rendas é um array
+                    const rendasArray = Array.isArray(rendas) ? rendas : [];
+                    metas.forEach(meta => {
+                        // Filtrar rendas que correspondem à meta (por nome/categoria)
+                        const nomeMetaNormalizado = meta.nome.toLowerCase().replace('renda ', '');
+                        const rendasDaMeta = rendasArray.filter(r => {
+                            if (!r || !r.categoria) return false;
+                            return r.categoria.toLowerCase().includes(nomeMetaNormalizado);
+                        });
+                        // Calcular o total recebido
+                        const totalRecebido = rendasDaMeta.reduce((acc, renda) => {
+                            const valorRenda = renda && typeof renda.valor === 'number' ? renda.valor : 0;
+                            return acc + valorRenda;
+                        }, 0);
+                        const percentual = meta.valor > 0 ? (totalRecebido / meta.valor) * 100 : 0;
+                        const metaCard = `
+                            <div class="meta-card">
+                                <div class="meta-header">
+                                    <i class="${meta.icone || 'fas fa-star'}"></i>
+                                    <h4>${meta.nome}</h4>
+                                </div>
+                                <div class="meta-valor">
+                                    <span>Meta:</span>
+                                    <span class="meta-limite">${Utils.formatarMoeda(meta.valor)}</span>
+                                </div>
+                                <div class="meta-progresso">
+                                    <div class="barra-progresso">
+                                        <div class="progresso" style="width: ${percentual > 100 ? 100 : percentual}%"></div>
+                                    </div>
+                                    <div class="meta-info">
+                                        <span>${Utils.formatarMoeda(totalRecebido)}</span>
+                                        <span>${percentual.toFixed(0)}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.innerHTML += metaCard;
+                    });
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar rendas para metas de renda:", error);
+                    container.innerHTML = '<p class="text-center col-span-2">Erro ao carregar metas de renda.</p>';
                 });
-
-                const totalGasto = gastosDaMeta.reduce((acc, gasto) => acc + gasto.valor, 0);
-                const percentual = meta.valor > 0 ? (totalGasto / meta.valor) * 100 : 0;
-
-                const metaCard = `
-                    <div class="meta-card">
-                        <div class="meta-header">
-                            <i class="${meta.icone || 'fas fa-star'}"></i>
-                            <h4>${meta.nome}</h4>
-                        </div>
-                        <div class="meta-valor">
-                            <span>Meta:</span>
-                            <span class="meta-limite">${Utils.formatarMoeda(meta.valor)}</span>
-                        </div>
-                        <div class="meta-progresso">
-                            <div class="barra-progresso">
-                                <div class="progresso" style="width: ${percentual > 100 ? 100 : percentual}%"></div>
-                            </div>
-                            <div class="meta-info">
-                                <span>${Utils.formatarMoeda(totalGasto)}</span>
-                                <span>${percentual.toFixed(0)}%</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += metaCard;
-            });
         }
     </script>
 </body>

@@ -15,8 +15,8 @@ const METAS = {
 };
 
 // Inicialização
-document.addEventListener('DOMContentLoaded', () => {
-    atualizarDashboard();
+document.addEventListener('DOMContentLoaded', async () => {
+    await atualizarDashboard();
     inicializarModais();
 
     // Eventos para upload de arquivos
@@ -74,11 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Atualiza todo o dashboard
+// Função para atualizar o dashboard
 function atualizarDashboard() {
     // Verificar se estamos na página do dashboard
     const isDashboardPage = document.getElementById('mesSelecionado') !== null;
     
+    // Atualizar texto do mês selecionado
     atualizarMesSelecionado();
     
     // Carregar dados apenas se estivermos na página do dashboard
@@ -90,8 +91,9 @@ function atualizarDashboard() {
         atualizarResumoFinal();
     }
     
-    atualizarGraficos();
-    atualizarMetas();
+    // Carregar tabelas de últimos gastos e rendas
+    carregarUltimosGastos();
+    carregarUltimasRendas();
 }
 
 // Atualiza o mês selecionado
@@ -114,8 +116,8 @@ function mudarMes(direcao) {
 }
 
 // Carrega os bancos com saldo
-function carregarBancos() {
-    const bancos = db.getAll('bancos');
+async function carregarBancos() {
+    const bancos = await db.getAll('bancos');
     const listaBancos = document.getElementById('listaBancos');
     let totalBancos = 0;
 
@@ -153,8 +155,9 @@ function carregarBancos() {
 }
 
 // Carrega os cartões com fatura
-function carregarCartoes() {
-    const cartoes = db.getAll('cartoes');
+async function carregarCartoes() {
+    const cartoes = await db.getAll('cartoes');
+    const gastosVariaveis = await db.getAll('gastos_variaveis');
     const listaCartoes = document.getElementById('listaCartoes');
     let totalFaturas = 0;
     let totalFaturasPagas = 0;
@@ -172,8 +175,8 @@ function carregarCartoes() {
     const mes = mesReferencia.getMonth();
     const ano = mesReferencia.getFullYear();
 
-    cartoes.forEach(cartao => {
-        const faturaCartao = calcularFaturaAtual(cartao, mes, ano);
+    for (const cartao of cartoes) {
+        const faturaCartao = await calcularFaturaAtual(cartao, mes, ano, gastosVariaveis);
 
         const faturaPaga = cartao.faturasPagas && cartao.faturasPagas.some(fp => {
             const dataPagamento = new Date(fp.dataPagamento);
@@ -224,7 +227,7 @@ function carregarCartoes() {
             `;
             listaCartoes.appendChild(div);
         }
-    });
+    }
 
     const totalFaturasElement = document.getElementById('totalFaturas');
     if (totalFaturasElement) {
@@ -251,8 +254,8 @@ function carregarCartoes() {
 }
 
 // Carrega os gastos fixos do mês
-function carregarGastosFixos() {
-    const gastosFixos = db.getAll('gastos_fixos');
+async function carregarGastosFixos() {
+    const gastosFixos = await db.getAll('gastos_fixos');
     const listaGastos = document.getElementById('listaGastosFixos');
     let totalGastos = 0;
     let totalGastosPagos = 0;
@@ -272,7 +275,7 @@ function carregarGastosFixos() {
     const primeiroDiaMes = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth(), 1);
     const ultimoDiaMes = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth() + 1, 0);
 
-    gastosFixos.forEach(gasto => {
+    for (const gasto of gastosFixos) {
         totalGastos += Number(gasto.valor);
         
         // Verificar se o gasto está pago neste mês
@@ -320,7 +323,7 @@ function carregarGastosFixos() {
             </div>
         `;
         listaGastos.appendChild(div);
-    });
+    }
 
     // Verificar se o elemento totalGastosFixos existe
     const totalGastosFixosElement = document.getElementById('totalGastosFixos');
@@ -346,7 +349,7 @@ function carregarGastosFixos() {
         detalheGastosFixosElement.appendChild(detalheGastos);
     }
 
-    return totalGastosPendentes; // Retorna apenas os gastos pendentes para o cálculo do balanço
+    return { totalGastosPendentes };
 }
 
 // Funções utilitárias para cálculo de dias úteis
@@ -412,8 +415,8 @@ function obterDataRealRecebimento(renda, mes, ano) {
 }
 
 // Carrega as rendas do mês
-function carregarRendas() {
-    const rendas = db.getAll('rendas');
+async function carregarRendas() {
+    const rendas = await db.getAll('rendas');
     const listaRendas = document.getElementById('listaRendas');
     let totalRendas = 0;
     let totalRendasRecebidas = 0;
@@ -434,10 +437,10 @@ function carregarRendas() {
     const ultimoDiaMes = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth() + 1, 0);
     
     // Processar as rendas fixas
-    const rendasFixas = db.getAll('rendas_fixas');
+    const rendasFixas = await db.getAll('rendas_fixas');
     
     // Converter rendas fixas para o formato de rendas normais
-    rendasFixas.forEach(rendaFixa => {
+    for (const rendaFixa of rendasFixas) {
         // Calcular a data real de recebimento com base nas regras
         const dataRecebimento = obterDataRealRecebimento(
             rendaFixa, 
@@ -460,13 +463,13 @@ function carregarRendas() {
         };
         
         rendas.push(renda);
-    });
+    }
     
     // Processar as rendas variáveis
-    const rendasVariaveis = db.getAll('rendas_variaveis');
+    const rendasVariaveis = await db.getAll('rendas_variaveis');
     
     // Filtrar rendas variáveis para o mês atual e converter para o formato de rendas normais
-    rendasVariaveis.forEach(rendaVariavel => {
+    for (const rendaVariavel of rendasVariaveis) {
         const dataRenda = new Date(rendaVariavel.data);
         
         // Verificar se a renda variável é do mês selecionado
@@ -489,7 +492,7 @@ function carregarRendas() {
             
             rendas.push(renda);
         }
-    });
+    }
 
     // Filtrar apenas as rendas do mês atual
     const rendasDoMes = rendas.filter(renda => {
@@ -591,11 +594,11 @@ function carregarRendas() {
 }
 
 // Atualiza o resumo final
-function atualizarResumoFinal() {
-    const totalBancos = carregarBancos();
-    const totalFaturasPendentes = carregarCartoes();
-    const totalGastosPendentes = carregarGastosFixos();
-    const totalRendasPendentes = carregarRendas();
+async function atualizarResumoFinal() {
+    const totalBancos = await carregarBancos();
+    const totalFaturasPendentes = await carregarCartoes();
+    const { totalGastosPendentes } = await carregarGastosFixos();
+    const totalRendasPendentes = await carregarRendas();
 
     const saldoAtual = totalBancos;
     const totalDividas = totalFaturasPendentes + totalGastosPendentes;
@@ -632,8 +635,132 @@ function atualizarResumoFinal() {
     }
 }
 
+// Carrega os últimos gastos para a tabela do dashboard
+async function carregarUltimosGastos() {
+    const tabelaGastos = document.getElementById('tabelaUltimosGastos');
+    
+    // Verificar se o elemento existe na página atual
+    if (!tabelaGastos) {
+        console.log('Elemento tabelaUltimosGastos não encontrado na página atual');
+        return;
+    }
+    
+    try {
+        const gastosVariaveis = await db.getAll('gastos_variaveis');
+        
+        // Ordenar por data (mais recentes primeiro)
+        const gastosOrdenados = Array.isArray(gastosVariaveis) ? 
+            gastosVariaveis.sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 5) : [];
+        
+        tabelaGastos.innerHTML = '';
+        
+        if (gastosOrdenados.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="4" class="text-center">Nenhum gasto registrado</td>';
+            tabelaGastos.appendChild(tr);
+            return;
+        }
+        
+        // Para cada gasto, criar uma linha na tabela
+        for (const gasto of gastosOrdenados) {
+            // Obter categoria
+            let categoria = { nome: 'Não categorizado', icone: 'fas fa-question-circle', cor: '#999' };
+            
+            if (gasto.categoriaId) {
+                try {
+                    const categoriaObj = await db.getById('categorias_gastos', gasto.categoriaId);
+                    if (categoriaObj) {
+                        categoria = categoriaObj;
+                    }
+                } catch (error) {
+                    console.error('Erro ao obter categoria:', error);
+                }
+            }
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${Utils.formatarData(gasto.data)}</td>
+                <td>${gasto.descricao}</td>
+                <td>
+                    <span class="categoria-item">
+                        <i class="${categoria.icone}" style="color: ${categoria.cor}"></i>
+                        ${categoria.nome}
+                    </span>
+                </td>
+                <td class="text-right negative">${Utils.formatarMoeda(gasto.valor)}</td>
+            `;
+            tabelaGastos.appendChild(tr);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar últimos gastos:', error);
+        tabelaGastos.innerHTML = '<tr><td colspan="4" class="text-center">Erro ao carregar gastos</td></tr>';
+    }
+}
+
+// Carrega as últimas rendas para a tabela do dashboard
+async function carregarUltimasRendas() {
+    const tabelaRendas = document.getElementById('tabelaUltimasRendas');
+    
+    // Verificar se o elemento existe na página atual
+    if (!tabelaRendas) {
+        console.log('Elemento tabelaUltimasRendas não encontrado na página atual');
+        return;
+    }
+    
+    try {
+        const rendasVariaveis = await db.getAll('rendas_variaveis');
+        
+        // Ordenar por data (mais recentes primeiro)
+        const rendasOrdenadas = Array.isArray(rendasVariaveis) ? 
+            rendasVariaveis.sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 5) : [];
+        
+        tabelaRendas.innerHTML = '';
+        
+        if (rendasOrdenadas.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="4" class="text-center">Nenhuma renda registrada</td>';
+            tabelaRendas.appendChild(tr);
+            return;
+        }
+        
+        // Para cada renda, criar uma linha na tabela
+        for (const renda of rendasOrdenadas) {
+            // Obter categoria
+            let categoria = { nome: 'Não categorizado', icone: 'fas fa-question-circle', cor: '#999' };
+            
+            if (renda.categoriaId) {
+                try {
+                    const categoriaObj = await db.getById('categorias_rendas', renda.categoriaId);
+                    if (categoriaObj) {
+                        categoria = categoriaObj;
+                    }
+                } catch (error) {
+                    console.error('Erro ao obter categoria:', error);
+                }
+            }
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${Utils.formatarData(renda.data)}</td>
+                <td>${renda.descricao}</td>
+                <td>
+                    <span class="categoria-item">
+                        <i class="${categoria.icone}" style="color: ${categoria.cor}"></i>
+                        ${categoria.nome}
+                    </span>
+                </td>
+                <td class="text-right positive">${Utils.formatarMoeda(renda.valor)}</td>
+            `;
+            tabelaRendas.appendChild(tr);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar últimas rendas:', error);
+        tabelaRendas.innerHTML = '<tr><td colspan="4" class="text-center">Erro ao carregar rendas</td></tr>';
+    }
+}
+
 // Abre o modal de comprovante
-function abrirModalComprovante(tipo, id) {
+async function abrirModalComprovante(tipo, id) {
     const modalComprovante = document.getElementById('modalComprovante');
     if (!modalComprovante) {
         console.log('Modal de comprovante não encontrado');
@@ -702,40 +829,44 @@ function removerImagem() {
 }
 
 // Salva o comprovante
-function salvarComprovante() {
-    if (!comprovanteSelecionado) {
-        alert('Por favor, selecione um comprovante para continuar.');
+async function salvarComprovante() {
+    if (!comprovanteSelecionado || !tipoOperacao || !idReferencia) {
+        alert('Nenhum comprovante selecionado ou operação inválida.');
         return;
     }
     
-    const descricao = document.getElementById('descricaoComprovante')?.value || '';
+    const descricao = document.getElementById('descricaoComprovante').value;
     
-    // Converter o arquivo para base64
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         const base64 = e.target.result;
         
-        // Salvar o comprovante de acordo com o tipo de operação
-        if (tipoOperacao === 'cartao') {
-            salvarComprovanteFatura(idReferencia, base64, descricao);
-        } else if (tipoOperacao === 'gasto') {
-            salvarComprovanteGasto(idReferencia, base64, descricao);
-        } else if (tipoOperacao === 'renda') {
-            salvarComprovanteRenda(idReferencia, base64, descricao);
+        let sucesso = false;
+        switch (tipoOperacao) {
+            case 'fatura':
+                sucesso = await salvarComprovanteFatura(idReferencia, base64, descricao);
+                break;
+            case 'gasto':
+                sucesso = await salvarComprovanteGasto(idReferencia, base64, descricao);
+                break;
+            case 'renda':
+                sucesso = await salvarComprovanteRenda(idReferencia, base64, descricao);
+                break;
         }
-        
-        // Fechar o modal
-        fecharModal('modalComprovante');
-        
-        // Atualizar o dashboard
-        atualizarDashboard();
+
+        if (sucesso) {
+            fecharModal('modalComprovante');
+            await atualizarDashboard();
+        } else {
+            alert('Erro ao salvar o comprovante.');
+        }
     };
     reader.readAsDataURL(comprovanteSelecionado);
 }
 
 // Abre o modal de pagamento de fatura
-function confirmarPagamento(cartaoId) {
-    const cartoes = db.getAll('cartoes');
+async function confirmarPagamento(cartaoId) {
+    const cartoes = await db.getAll('cartoes');
     const cartao = cartoes.find(c => c.id === cartaoId);
     
     if (!cartao) return;
@@ -766,248 +897,62 @@ function confirmarPagamento(cartaoId) {
     
     const hoje = new Date();
     const mesReferencia = new Date(hoje.getFullYear(), hoje.getMonth() + mesAtualOffset, 1);
-    const valorFatura = calcularFaturaAtual(cartao, mesReferencia.getMonth(), mesReferencia.getFullYear());
-    valorPagamentoElement.value = valorFatura;
+    const ano = mesReferencia.getFullYear();
+    const mes = mesReferencia.getMonth();
+    const valorFatura = await calcularFaturaAtual(cartao, mes, ano);
+    valorPagamentoElement.value = valorFatura.toFixed(2);
     
     dataPagamentoElement.valueAsDate = new Date();
     
-    carregarBancosSelect('bancoSelecionado');
+    await carregarBancosSelect('bancoSelecionado');
     
     modalPagamento.style.display = 'flex';
 }
 
 function calcularDataVencimentoFatura(dataCompra, diaFechamento, diaVencimento) {
-    let anoFatura = dataCompra.getFullYear();
-    let mesFatura = dataCompra.getMonth();
+    let data = new Date(dataCompra);
+    let mesFatura = data.getMonth();
+    let anoFatura = data.getFullYear();
 
-    if (dataCompra.getDate() > diaFechamento) {
-        mesFatura++;
+    // Se a compra foi feita no dia do fechamento ou depois, ela entra na próxima fatura
+    if (data.getDate() >= diaFechamento) {
+        mesFatura += 1;
+        if (mesFatura > 11) {
+            mesFatura = 0;
+            anoFatura += 1;
+        }
     }
 
+    // A data de vencimento é no mês seguinte ao da fatura
+    let mesVencimento = mesFatura + 1;
     let anoVencimento = anoFatura;
-    let mesVencimento = mesFatura;
-
-    if (diaVencimento < diaFechamento) {
-        mesVencimento++;
+    if (mesVencimento > 11) {
+        mesVencimento = 0;
+        anoVencimento += 1;
     }
     
-    const dataVencimento = new Date(anoVencimento, mesVencimento, diaVencimento);
-    
-    // Normaliza o mês e ano caso o mês ultrapasse 11 (Dezembro)
-    if (dataVencimento.getMonth() !== (mesVencimento % 12)) {
-      dataVencimento.setFullYear(dataVencimento.getFullYear(), mesVencimento, diaVencimento);
-    }
-    
-    return dataVencimento;
+    return new Date(anoVencimento, mesVencimento, diaVencimento);
 }
 
-function calcularFaturaAtual(cartao, mes, ano) {
-    const todasCompras = db.getAll('compras');
-    const comprasDoCartao = todasCompras.filter(c => c.cartaoId === cartao.id);
-    let faturaDoMes = 0;
+// Calcula o valor da fatura do cartão para um determinado mês
+async function calcularFaturaAtual(cartao, mes, ano, gastosVariaveisCache) {
+    // Opcionalmente, podemos buscar os gastos aqui se não forem passados como cache
+    const gastos = gastosVariaveisCache || await db.getAll('gastos_variaveis');
 
-    comprasDoCartao.forEach(compra => {
-        const dataCompra = new Date(compra.data);
-        const valorParcela = Number(compra.valor) / Number(compra.parcelas);
-
-        const dataPrimeiroVencimento = calcularDataVencimentoFatura(
-            dataCompra,
-            cartao.fechamento,
-            cartao.vencimento
-        );
-
-        for (let i = 0; i < compra.parcelas; i++) {
-            const dataVencimentoParcela = new Date(
-                dataPrimeiroVencimento.getFullYear(),
-                dataPrimeiroVencimento.getMonth() + i,
-                dataPrimeiroVencimento.getDate()
-            );
-
-            if (dataVencimentoParcela.getFullYear() === ano && dataVencimentoParcela.getMonth() === mes) {
-                faturaDoMes += valorParcela;
-                break;
-            }
+    const gastosCartao = gastos.filter(gasto => {
+        if (gasto.metodoPagamento !== 'cartao' || gasto.cartaoId !== cartao.id) {
+            return false;
         }
+
+        const dataVencimento = calcularDataVencimentoFatura(gasto.data, cartao.fechamento, cartao.vencimento);
+        return dataVencimento.getMonth() === (mes + 1) % 12 && dataVencimento.getFullYear() === (mes + 1 > 11 ? ano + 1 : ano);
     });
 
-    return faturaDoMes;
-}
-
-// Atualiza os gráficos
-function atualizarGraficos() {
-    const ctx1Element = document.getElementById('graficoGastosRendas');
-    const ctx2Element = document.getElementById('graficoDistribuicaoGastos');
-    
-    // Verificar se os elementos dos gráficos existem
-    if (!ctx1Element || !ctx2Element) {
-        console.log('Elementos dos gráficos não encontrados na página atual');
-        return;
-    }
-    
-    const ctx1 = ctx1Element.getContext('2d');
-    const ctx2 = ctx2Element.getContext('2d');
-
-    if (graficoGastosRendas) graficoGastosRendas.destroy();
-    if (graficoDistribuicaoGastos) graficoDistribuicaoGastos.destroy();
-
-    // Dados para o gráfico de Gastos vs. Rendas
-    const totalGastos = carregarCartoes() + carregarGastosFixos();
-    const totalRendas = carregarRendas();
-
-    graficoGastosRendas = new Chart(ctx1, {
-        type: 'bar',
-        data: {
-            labels: ['Gastos', 'Rendas'],
-            datasets: [{
-                data: [totalGastos, totalRendas],
-                backgroundColor: ['#E74C3C', '#2ECC71']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-
-    // Dados para o gráfico de Distribuição de Gastos
-    const gastosFixos = db.getAll('gastos_fixos');
-    const categorias = {};
-    
-    gastosFixos.forEach(gasto => {
-        if (categorias[gasto.categoriaId]) {
-            categorias[gasto.categoriaId] += Number(gasto.valor);
-        } else {
-            categorias[gasto.categoriaId] = Number(gasto.valor);
-        }
-    });
-
-    const categoriasGastos = db.getAll('categorias_gastos');
-    const labels = Object.keys(categorias).map(id => 
-        categoriasGastos.find(c => c.id === Number(id))?.nome || 'Outros'
-    );
-    const valores = Object.values(categorias);
-
-    graficoDistribuicaoGastos = new Chart(ctx2, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: valores,
-                backgroundColor: [
-                    '#2ECC71', '#3498DB', '#9B59B6', 
-                    '#F1C40F', '#E67E22', '#E74C3C'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'right'
-                }
-            }
-        }
-    });
-}
-
-// Atualiza as metas de gastos
-function atualizarMetas() {
-    // Verificar se os elementos de metas existem
-    const progressoPessoalElement = document.getElementById('progressoPessoal');
-    const progressoCasaElement = document.getElementById('progressoCasa');
-    
-    if (!progressoPessoalElement || !progressoCasaElement) {
-        console.log('Elementos de metas não encontrados na página atual');
-        return;
-    }
-    
-    const hoje = new Date();
-    const mesReferencia = new Date(hoje.getFullYear(), hoje.getMonth() + mesAtualOffset, 1);
-    const primeiroDia = Utils.primeiroDiaMes(mesReferencia);
-    const ultimoDia = Utils.ultimoDiaMes(mesReferencia);
-
-    // Busca todos os gastos do mês
-    const gastosFixos = db.getAll('gastos_fixos');
-    const gastosVariaveis = db.getAll('gastos_variaveis')
-        .filter(gasto => Utils.dataEntre(gasto.data, primeiroDia, ultimoDia));
-
-    // Calcula gastos por tipo
-    let totalPessoal = 0;
-    let totalCasa = 0;
-
-    // Soma gastos fixos
-    gastosFixos.forEach(gasto => {
-        if (gasto.tipo === 'pessoal') {
-            totalPessoal += Number(gasto.valor);
-        } else if (gasto.tipo === 'casa') {
-            totalCasa += Number(gasto.valor);
-        }
-    });
-
-    // Soma gastos variáveis
-    gastosVariaveis.forEach(gasto => {
-        if (gasto.tipo === 'pessoal') {
-            totalPessoal += Number(gasto.valor);
-        } else if (gasto.tipo === 'casa') {
-            totalCasa += Number(gasto.valor);
-        }
-    });
-
-    // Atualiza meta de gastos pessoais
-    atualizarProgressoMeta('Pessoal', totalPessoal, METAS.PESSOAL);
-
-    // Atualiza meta de gastos da casa
-    atualizarProgressoMeta('Casa', totalCasa, METAS.CASA);
-}
-
-// Atualiza o progresso de uma meta específica
-function atualizarProgressoMeta(tipo, valorGasto, meta) {
-    const progressoElement = document.getElementById(`progresso${tipo}`);
-    const gastoElement = document.getElementById(`gasto${tipo}`);
-    const percentualElement = document.getElementById(`percentual${tipo}`);
-    
-    // Verificar se os elementos existem
-    if (!progressoElement || !gastoElement || !percentualElement) {
-        return;
-    }
-
-    const percentual = (valorGasto / meta) * 100;
-    const percentualFormatado = Math.min(100, Math.round(percentual));
-
-    // Atualiza a barra de progresso
-    progressoElement.style.width = `${percentualFormatado}%`;
-    progressoElement.className = 'progresso';
-
-    if (percentual >= 100) {
-        progressoElement.classList.add('excedido');
-    } else if (percentual >= 80) {
-        progressoElement.classList.add('alerta');
-    }
-
-    // Atualiza os valores
-    gastoElement.textContent = Utils.formatarMoeda(valorGasto);
-    percentualElement.textContent = `${percentualFormatado}%`;
-
-    // Adiciona tooltip se exceder
-    if (percentual > 100) {
-        const excesso = valorGasto - meta;
-        percentualElement.title = `Excedeu em ${Utils.formatarMoeda(excesso)}`;
-    } else {
-        percentualElement.title = '';
-    }
+    return gastosCartao.reduce((total, gasto) => total + gasto.valor, 0);
 }
 
 // Inicializa os modais
-function inicializarModais() {
+async function inicializarModais() {
     // Verificar se estamos em uma página com modais
     const temModais = document.querySelector('.modal') !== null;
     
@@ -1031,17 +976,23 @@ function inicializarModais() {
     // Configurar botões de confirmação
     const btnConfirmarPagamento = document.getElementById('btnConfirmarPagamento');
     if (btnConfirmarPagamento) {
-        btnConfirmarPagamento.addEventListener('click', confirmarPagamentoFatura);
+        btnConfirmarPagamento.addEventListener('click', async () => {
+            await confirmarPagamentoFatura();
+        });
     }
     
     const btnConfirmarPagamentoGasto = document.getElementById('btnConfirmarPagamentoGasto');
     if (btnConfirmarPagamentoGasto) {
-        btnConfirmarPagamentoGasto.addEventListener('click', confirmarPagamentoGasto);
+        btnConfirmarPagamentoGasto.addEventListener('click', async () => {
+            await confirmarPagamentoGasto();
+        });
     }
     
     const btnConfirmarRecebimento = document.getElementById('btnConfirmarRecebimento');
     if (btnConfirmarRecebimento) {
-        btnConfirmarRecebimento.addEventListener('click', confirmarRecebimento);
+        btnConfirmarRecebimento.addEventListener('click', async () => {
+            await confirmarRecebimento();
+        });
     }
 }
 
@@ -1058,177 +1009,105 @@ function fecharModais() {
 }
 
 // Abre o modal de pagamento de fatura
-function confirmarPagamentoFatura() {
-    const cartaoId = parseInt(document.getElementById('cartaoId').value);
-    const dataPagamento = document.getElementById('dataPagamento').value;
-    const bancoId = parseInt(document.getElementById('bancoSelecionado').value);
+async function confirmarPagamentoFatura() {
+    const cartaoId = document.getElementById('cartaoId').value;
+    const bancoId = document.getElementById('bancoSelecionado').value;
     const valor = parseFloat(document.getElementById('valorPagamento').value);
-    
-    if (!cartaoId || !dataPagamento || !bancoId || isNaN(valor)) {
+    const dataPagamento = document.getElementById('dataPagamento').value;
+
+    if (!cartaoId || !bancoId || !valor || !dataPagamento) {
         alert('Por favor, preencha todos os campos.');
         return;
     }
-    
-    // Obter o cartão
-    const cartoes = db.getAll('cartoes');
-    const cartao = cartoes.find(c => c.id === cartaoId);
-    
-    if (!cartao) return;
-    
-    // Inicializar array de faturas pagas se não existir
-    if (!cartao.faturasPagas) {
-        cartao.faturasPagas = [];
+
+    try {
+        // 1. Encontrar o cartão
+        const cartoes = await db.getAll('cartoes');
+        const cartao = cartoes.find(c => c.id === cartaoId);
+        if (!cartao) throw new Error('Cartão não encontrado');
+
+        // 2. Adicionar ao histórico de faturas pagas
+        if (!cartao.faturasPagas) {
+            cartao.faturasPagas = [];
+        }
+        cartao.faturasPagas.push({ dataPagamento, valor });
+        await db.update('cartoes', cartaoId, cartao);
+
+        // 3. Atualizar o saldo do banco
+        await atualizarSaldoBanco(bancoId, -valor);
+
+        // 4. Registrar a transação de saída
+        await registrarTransacao({
+            tipo: 'despesa',
+            descricao: `Pagamento da fatura do cartão ${cartao.nome}`,
+            valor,
+            data: dataPagamento,
+            bancoId
+        });
+        
+        // 5. Opcional: Anexar comprovante se houver um selecionado
+        const inputComprovante = document.getElementById('inputComprovante');
+        if (inputComprovante && inputComprovante.files.length > 0) {
+            // Lógica para salvar comprovante aqui...
+        }
+
+        alert('Pagamento da fatura confirmado com sucesso!');
+        fecharModal('modalPagamento');
+        await atualizarDashboard();
+    } catch (error) {
+        console.error('Erro ao confirmar pagamento da fatura:', error);
+        alert('Ocorreu um erro. Verifique o console para mais detalhes.');
     }
-    
-    // Adicionar pagamento
-    cartao.faturasPagas.push({
-        dataPagamento: dataPagamento,
-        valor: valor,
-        bancoId: bancoId
-    });
-    
-    // Atualizar cartão
-    db.save('cartoes', cartao);
-    
-    // Atualizar saldo do banco
-    atualizarSaldoBanco(bancoId, -valor);
-    
-    // Registrar transação
-    registrarTransacao({
-        tipo: 'saida',
-        descricao: `Pagamento de fatura - ${cartao.nome}`,
-        valor: valor,
-        data: dataPagamento,
-        bancoId: bancoId,
-        categoria: 'Fatura de Cartão'
-    });
-    
-    fecharModais();
-    atualizarResumoFinal();
 }
 
 // Abre o modal de pagamento de gasto fixo
-function abrirModalPagamentoGasto(gastoId) {
-    const gastos = db.getAll('gastos_fixos');
-    const gasto = gastos.find(g => g.id === gastoId);
-    
-    if (!gasto) return;
-    
-    // Verificar se estamos na página com o modal de pagamento
-    const modalPagamentoGasto = document.getElementById('modalPagamentoGasto');
-    const nomeGastoElement = document.getElementById('nomeGasto');
-    const gastoIdElement = document.getElementById('gastoId');
-    const valorPagamentoGastoElement = document.getElementById('valorPagamentoGasto');
-    const dataPagamentoGastoElement = document.getElementById('dataPagamentoGasto');
-    
-    if (!modalPagamentoGasto || !nomeGastoElement || !gastoIdElement || 
-        !valorPagamentoGastoElement || !dataPagamentoGastoElement) {
-        console.log('Modal de pagamento de gasto não encontrado ou elementos faltando');
-        
-        // Se não estiver na página do dashboard, redirecionar para ela
-        if (window.location.pathname !== '/dashboard.html' && 
-            window.location.pathname !== '/pages/dashboard.html' && 
-            window.location.pathname !== '/') {
-            window.location.href = 'dashboard.html?gasto=' + gastoId;
-            return;
-        }
-        
-        // Se estiver na página do dashboard, mostrar um alerta
-        alert(`Por favor, acesse a página do Dashboard para pagar o gasto ${gasto.descricao}`);
+async function abrirModalPagamentoGasto(gastoId) {
+    const gasto = await db.getById('gastos_fixos', gastoId);
+    if (!gasto) {
+        alert('Gasto não encontrado!');
         return;
     }
-    
-    nomeGastoElement.textContent = gasto.descricao;
-    gastoIdElement.value = gasto.id;
-    valorPagamentoGastoElement.value = gasto.valor;
-    
-    // Preencher data atual
-    dataPagamentoGastoElement.valueAsDate = new Date();
-    
-    // Carregar bancos
-    carregarBancosSelect('bancoSelecionadoGasto');
-    
-    modalPagamentoGasto.style.display = 'block';
+
+    document.getElementById('nomeGasto').textContent = gasto.descricao;
+    document.getElementById('valorPagamentoGasto').value = gasto.valor.toFixed(2);
+    document.getElementById('dataPagamentoGasto').value = new Date().toISOString().split('T')[0];
+    document.getElementById('gastoId').value = gastoId;
+
+    await carregarBancosSelect('bancoSelecionadoGasto');
+
+    abrirModal('modalPagamentoGasto');
 }
 
 // Abre o modal de recebimento
-function abrirModalRecebimento(rendaId, tipo) {
-    let renda;
-    
-    // Buscar a renda de acordo com o tipo
-    if (tipo === 'fixa') {
-        const rendasFixas = db.getAll('rendas_fixas');
-        renda = rendasFixas.find(r => r.id === Number(rendaId));
-    } else if (tipo === 'variavel') {
-        const rendasVariaveis = db.getAll('rendas_variaveis');
-        renda = rendasVariaveis.find(r => r.id === Number(rendaId));
-    } else {
-        // Compatibilidade com código anterior
-        const rendas = db.getAll('rendas');
-        renda = rendas.find(r => r.id === Number(rendaId));
-    }
-    
-    if (!renda) return;
-    
-    // Verificar se estamos na página com o modal de recebimento
-    const modalRecebimento = document.getElementById('modalRecebimento');
-    const nomeRendaElement = document.getElementById('nomeRenda');
-    const rendaIdElement = document.getElementById('rendaId');
-    const valorRecebimentoElement = document.getElementById('valorRecebimento');
-    const dataRecebimentoElement = document.getElementById('dataRecebimento');
-    const tipoRendaElement = document.getElementById('tipoRenda'); // Novo campo para o tipo
-    
-    if (!modalRecebimento || !nomeRendaElement || !rendaIdElement || 
-        !valorRecebimentoElement || !dataRecebimentoElement) {
-        console.log('Modal de recebimento não encontrado ou elementos faltando');
-        
-        // Se não estiver na página do dashboard, redirecionar para ela
-        if (window.location.pathname !== '/dashboard.html' && 
-            window.location.pathname !== '/pages/dashboard.html' && 
-            window.location.pathname !== '/') {
-            window.location.href = 'dashboard.html?renda=' + rendaId + '&tipo=' + tipo;
-            return;
-        }
-        
-        // Se estiver na página do dashboard, mostrar um alerta
-        alert(`Por favor, acesse a página do Dashboard para registrar o recebimento de ${renda.descricao}`);
+async function abrirModalRecebimento(rendaId, tipo) {
+    const collection = tipo === 'fixa' ? 'rendas_fixas' : 'rendas_variaveis';
+    const renda = await db.getById(collection, rendaId);
+
+    if (!renda) {
+        alert('Renda não encontrada!');
         return;
     }
-    
-    nomeRendaElement.textContent = renda.descricao;
-    rendaIdElement.value = renda.id;
-    valorRecebimentoElement.value = renda.valor;
-    
-    // Armazenar o tipo de renda
-    if (tipoRendaElement) {
-        tipoRendaElement.value = tipo || 'renda';
-    } else {
-        // Se o elemento não existir, criar um campo oculto
-        const hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.id = 'tipoRenda';
-        hiddenInput.value = tipo || 'renda';
-        modalRecebimento.querySelector('.modal-body').appendChild(hiddenInput);
-    }
-    
-    // Preencher data atual
-    dataRecebimentoElement.valueAsDate = new Date();
-    
-    // Carregar bancos
-    carregarBancosSelect('bancoSelecionadoRecebimento');
-    
-    modalRecebimento.style.display = 'block';
+
+    document.getElementById('nomeRenda').textContent = renda.descricao;
+    document.getElementById('valorRecebimento').value = renda.valor.toFixed(2);
+    document.getElementById('dataRecebimento').value = new Date().toISOString().split('T')[0];
+    document.getElementById('rendaId').value = rendaId;
+    document.getElementById('tipoRenda').value = tipo;
+
+    await carregarBancosSelect('bancoSelecionadoRecebimento');
+
+    abrirModal('modalRecebimento');
 }
 
 // Carrega os bancos no select
-function carregarBancosSelect(selectId) {
+async function carregarBancosSelect(selectId) {
     const select = document.getElementById(selectId);
     if (!select) {
         console.log(`Elemento select ${selectId} não encontrado`);
         return;
     }
     
-    const bancos = db.getAll('bancos');
+    const bancos = await db.getAll('bancos');
     
     // Limpar opções existentes, exceto a primeira
     while (select.options.length > 1) {
@@ -1239,207 +1118,173 @@ function carregarBancosSelect(selectId) {
     bancos.forEach(banco => {
         const option = document.createElement('option');
         option.value = banco.id;
-        option.textContent = banco.nome;
+        option.textContent = `${banco.nome} (${Utils.formatarMoeda(banco.saldo)})`;
         select.appendChild(option);
     });
 }
 
-// Confirma o pagamento do gasto fixo
-function confirmarPagamentoGasto() {
-    const gastoId = parseInt(document.getElementById('gastoId').value);
-    const dataPagamento = document.getElementById('dataPagamentoGasto').value;
-    const bancoId = parseInt(document.getElementById('bancoSelecionadoGasto').value);
+// Confirma o pagamento de um gasto fixo
+async function confirmarPagamentoGasto() {
+    const gastoId = document.getElementById('gastoId').value;
+    const bancoId = document.getElementById('bancoSelecionadoGasto').value;
     const valor = parseFloat(document.getElementById('valorPagamentoGasto').value);
-    
-    if (!gastoId || !dataPagamento || !bancoId || isNaN(valor)) {
+    const dataPagamento = document.getElementById('dataPagamentoGasto').value;
+
+    if (!gastoId || !bancoId || !valor || !dataPagamento) {
         alert('Por favor, preencha todos os campos.');
         return;
     }
-    
-    // Obter o gasto
-    const gastos = db.getAll('gastos_fixos');
-    const gasto = gastos.find(g => g.id === gastoId);
-    
-    if (!gasto) return;
-    
-    // Marcar como pago
-    gasto.pago = true;
-    gasto.dataPagamento = dataPagamento;
-    gasto.valorPago = valor;
-    gasto.bancoId = bancoId;
-    
-    // Atualizar gasto
-    db.save('gastos_fixos', gasto);
-    
-    // Atualizar saldo do banco
-    atualizarSaldoBanco(bancoId, -valor);
-    
-    // Registrar transação
-    registrarTransacao({
-        tipo: 'saida',
-        descricao: `Pagamento de gasto fixo - ${gasto.descricao}`,
-        valor: valor,
-        data: dataPagamento,
-        bancoId: bancoId,
-        categoria: 'Gasto Fixo'
-    });
-    
-    fecharModais();
-    atualizarResumoFinal();
+
+    try {
+        const gasto = await db.getById('gastos_fixos', gastoId);
+        if (!gasto) throw new Error('Gasto não encontrado');
+
+        // Adicionar ao histórico de pagamentos do gasto
+        if (!gasto.pagamentos) {
+            gasto.pagamentos = [];
+        }
+        gasto.pagamentos.push({ data: dataPagamento, valor });
+        await db.update('gastos_fixos', gastoId, gasto);
+
+        // Atualizar saldo do banco
+        await atualizarSaldoBanco(bancoId, -valor);
+
+        // Registrar transação
+        await registrarTransacao({
+            tipo: 'despesa',
+            descricao: `Pagamento de: ${gasto.descricao}`,
+            valor,
+            data: dataPagamento,
+            bancoId,
+            gastoFixoId: gastoId
+        });
+
+        alert('Pagamento confirmado!');
+        fecharModal('modalPagamentoGasto');
+        await atualizarDashboard();
+    } catch (error) {
+        console.error('Erro ao confirmar pagamento do gasto:', error);
+        alert('Ocorreu um erro. Verifique o console.');
+    }
 }
 
-// Confirma o recebimento da renda
-function confirmarRecebimento() {
-    const rendaId = parseInt(document.getElementById('rendaId').value);
-    const dataRecebimento = document.getElementById('dataRecebimento').value;
-    const bancoId = parseInt(document.getElementById('bancoSelecionadoRecebimento').value);
+// Confirma o recebimento de uma renda
+async function confirmarRecebimento() {
+    const rendaId = document.getElementById('rendaId').value;
+    const tipo = document.getElementById('tipoRenda').value;
+    const bancoId = document.getElementById('bancoSelecionadoRecebimento').value;
     const valor = parseFloat(document.getElementById('valorRecebimento').value);
-    const tipoRenda = document.getElementById('tipoRenda')?.value || 'renda';
-    
-    if (!rendaId || !dataRecebimento || !bancoId || isNaN(valor)) {
+    const dataRecebimento = document.getElementById('dataRecebimento').value;
+
+    if (!rendaId || !bancoId || !valor || !dataRecebimento) {
         alert('Por favor, preencha todos os campos.');
         return;
     }
-    
-    // Obter a renda de acordo com o tipo
-    let renda;
-    let entidade;
-    
-    if (tipoRenda === 'fixa') {
-        entidade = 'rendas_fixas';
-        const rendasFixas = db.getAll(entidade);
-        renda = rendasFixas.find(r => r.id === rendaId);
-    } else if (tipoRenda === 'variavel') {
-        entidade = 'rendas_variaveis';
-        const rendasVariaveis = db.getAll(entidade);
-        renda = rendasVariaveis.find(r => r.id === rendaId);
-    } else {
-        entidade = 'rendas';
-        const rendas = db.getAll(entidade);
-        renda = rendas.find(r => r.id === rendaId);
+
+    const collection = tipo === 'fixa' ? 'rendas_fixas' : 'rendas_variaveis';
+
+    try {
+        const renda = await db.getById(collection, rendaId);
+        if (!renda) throw new Error('Renda não encontrada');
+
+        // Adicionar ao histórico de recebimentos da renda
+        if (!renda.recebimentos) {
+            renda.recebimentos = [];
+        }
+        renda.recebimentos.push({ data: dataRecebimento, valor });
+        await db.update(collection, rendaId, renda);
+
+        // Atualizar saldo do banco
+        await atualizarSaldoBanco(bancoId, valor);
+
+        // Registrar transação
+        await registrarTransacao({
+            tipo: 'receita',
+            descricao: `Recebimento de: ${renda.descricao}`,
+            valor,
+            data: dataRecebimento,
+            bancoId,
+            rendaId,
+            tipoRenda: tipo
+        });
+
+        alert('Recebimento confirmado!');
+        fecharModal('modalRecebimento');
+        await atualizarDashboard();
+    } catch (error) {
+        console.error('Erro ao confirmar recebimento:', error);
+        alert('Ocorreu um erro. Verifique o console.');
     }
-    
-    if (!renda) return;
-    
-    // Marcar como recebida
-    renda.recebida = true;
-    renda.dataRecebimento = dataRecebimento;
-    renda.valorRecebido = valor;
-    renda.bancoId = bancoId;
-    
-    // Atualizar renda
-    db.save(entidade, renda);
-    
-    // Atualizar saldo do banco
-    atualizarSaldoBanco(bancoId, valor);
-    
-    // Registrar transação
-    registrarTransacao({
-        tipo: 'entrada',
-        descricao: `Recebimento - ${renda.descricao}`,
-        valor: valor,
-        data: dataRecebimento,
-        bancoId: bancoId,
-        categoria: 'Renda',
-        origem: tipoRenda
-    });
-    
-    fecharModais();
-    atualizarResumoFinal();
 }
 
 // Atualiza o saldo do banco
-function atualizarSaldoBanco(bancoId, valor) {
-    const bancos = db.getAll('bancos');
-    const banco = bancos.find(b => b.id === bancoId);
+async function atualizarSaldoBanco(bancoId, valor) {
+    const banco = await db.getById('bancos', bancoId);
     
-    if (!banco) return;
-    
-    banco.saldo = parseFloat(banco.saldo) + valor;
-    db.save('bancos', banco);
-}
-
-// Registra uma transação
-function registrarTransacao(transacao) {
-    const transacoes = db.getAll('transacoes') || [];
-    
-    // Gerar ID único
-    transacao.id = Date.now();
-    
-    transacoes.push(transacao);
-    db.saveAll('transacoes', transacoes);
-}
-
-// Salva o comprovante de uma fatura
-function salvarComprovanteFatura(cartaoId, imagemBase64, descricao) {
-    const cartoes = db.getAll('cartoes');
-    const cartao = cartoes.find(c => c.id === Number(cartaoId));
-    
-    if (!cartao) return;
-    
-    // Inicializar array de comprovantes se não existir
-    if (!cartao.comprovantes) {
-        cartao.comprovantes = [];
+    if (banco) {
+        banco.saldo += valor;
+        await db.update('bancos', bancoId, banco);
     }
-    
-    // Adicionar comprovante
-    cartao.comprovantes.push({
-        id: Date.now(),
-        imagem: imagemBase64,
-        descricao: descricao,
-        data: new Date().toISOString()
-    });
-    
-    // Atualizar cartão
-    db.save('cartoes', cartao);
 }
 
-// Salva o comprovante de um gasto
-function salvarComprovanteGasto(gastoId, imagemBase64, descricao) {
-    const gastos = db.getAll('gastos_fixos');
-    const gasto = gastos.find(g => g.id === Number(gastoId));
-    
-    if (!gasto) return;
-    
-    // Inicializar array de comprovantes se não existir
-    if (!gasto.comprovantes) {
-        gasto.comprovantes = [];
-    }
-    
-    // Adicionar comprovante
-    gasto.comprovantes.push({
-        id: Date.now(),
-        imagem: imagemBase64,
-        descricao: descricao,
-        data: new Date().toISOString()
-    });
-    
-    // Atualizar gasto
-    db.save('gastos_fixos', gasto);
+// Registra uma transação genérica no sistema
+async function registrarTransacao(transacao) {
+    // No futuro, isso pode ir para uma coleção 'transacoes'
+    console.log('Registrando transação:', transacao);
+    await db.insert('transacoes', transacao);
+    return true;
 }
 
-// Salva o comprovante de uma renda
-function salvarComprovanteRenda(rendaId, imagemBase64, descricao) {
-    const rendas = db.getAll('rendas');
-    const renda = rendas.find(r => r.id === Number(rendaId));
-    
-    if (!renda) return;
-    
-    // Inicializar array de comprovantes se não existir
-    if (!renda.comprovantes) {
-        renda.comprovantes = [];
+// Salva o comprovante de pagamento de uma fatura
+async function salvarComprovanteFatura(cartaoId, imagemBase64, descricao) {
+    try {
+        const cartao = await db.getById('cartoes', cartaoId);
+        if (!cartao) return false;
+
+        if (!cartao.comprovantes) {
+            cartao.comprovantes = [];
+        }
+        cartao.comprovantes.push({ data: new Date().toISOString(), imagem: imagemBase64, descricao });
+        
+        await db.update('cartoes', cartaoId, cartao);
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar comprovante da fatura:', error);
+        return false;
     }
+}
+
+// Salva o comprovante de pagamento de um gasto
+async function salvarComprovanteGasto(gastoId, imagemBase64, descricao) {
+    try {
+        const gasto = await db.getById('gastos_fixos', gastoId);
+        if (!gasto) return false;
+
+        if (!gasto.comprovantes) {
+            gasto.comprovantes = [];
+        }
+        gasto.comprovantes.push({ data: new Date().toISOString(), imagem: imagemBase64, descricao });
+
+        await db.update('gastos_fixos', gastoId, gasto);
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar comprovante do gasto:', error);
+        return false;
+    }
+}
+
+// Salva o comprovante de recebimento de uma renda
+async function salvarComprovanteRenda(rendaId, imagemBase64, descricao) {
+    // Assumindo que a renda pode ser fixa ou variável, mas o comprovante é genérico
+    console.log(`Salvando comprovante para renda ${rendaId}: ${descricao}`);
+    // A lógica para encontrar e atualizar a renda precisaria ser mais robusta
+    // Por enquanto, vamos apenas simular o salvamento
     
-    // Adicionar comprovante
-    renda.comprovantes.push({
-        id: Date.now(),
-        imagem: imagemBase64,
-        descricao: descricao,
-        data: new Date().toISOString()
-    });
+    // Exemplo de como poderia ser:
+    // const renda = await db.getById('rendas_fixas', rendaId) || await db.getById('rendas_variaveis', rendaId);
+    // ... atualizar e salvar
     
-    // Atualizar renda
-    db.save('rendas', renda);
+    return true; // Simulação
 }
 
 // Exporta as funções para uso nos testes

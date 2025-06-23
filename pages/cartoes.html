@@ -93,6 +93,9 @@
                 <li><a href="gastos.html" class="nav-link"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
                 <li><a href="rendas.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
                 <li><a href="settings.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+                <li id="userInfo">
+                    <!-- O conteúdo será preenchido pelo script de autenticação -->
+                </li>
             </ul>
         </nav>
     </header>
@@ -297,7 +300,18 @@
 
     <!-- Carregar scripts sem usar módulos ES6 -->
     <script src="../assets/js/utils.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Nossa inicialização do Firebase -->
+    <script src="../assets/js/firebase-init.js"></script>
+    
+    <script src="../assets/js/auth.js"></script>
     <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/main.js"></script>
     <script>
         // Variáveis globais
         let cartaoSelecionado = null;
@@ -361,8 +375,8 @@
         }
 
         // Funções de UI
-        function carregarCartoes() {
-            const cartoes = db.getAll('cartoes');
+        async function carregarCartoes() {
+            const cartoes = await db.getAll('cartoes');
             const tbody = document.getElementById('tabelaCartoes');
             tbody.innerHTML = '';
 
@@ -370,7 +384,9 @@
             const mes = hoje.getMonth();
             const ano = hoje.getFullYear();
 
-            cartoes.forEach(cartao => {
+            if (!Array.isArray(cartoes)) return;
+
+            for (const cartao of cartoes) {
                 const faturaAtual = calcularFatura(cartao, mes, ano);
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -393,11 +409,12 @@
                     </td>
                 `;
                 tbody.appendChild(tr);
-            });
+            }
         }
 
-        function visualizarFatura(id) {
-            cartaoSelecionado = db.getAll('cartoes').find(c => c.id === id);
+        async function visualizarFatura(id) {
+            const cartoes = await db.getAll('cartoes');
+            cartaoSelecionado = cartoes.find(c => c.id === id);
             if (!cartaoSelecionado) return;
 
             document.getElementById('faturaDetalhada').style.display = 'block';
@@ -409,7 +426,7 @@
             document.getElementById('faturaDetalhada').scrollIntoView({ behavior: 'smooth' });
         }
         
-        function atualizarFaturaDetalhada() {
+        async function atualizarFaturaDetalhada() {
             if (!cartaoSelecionado) return;
 
             const hoje = new Date();
@@ -442,7 +459,7 @@
 
             const itensFaturaContainer = document.getElementById('itensFatura');
             itensFaturaContainer.innerHTML = '';
-            const compras = db.getAll('compras').filter(c => c.cartaoId === cartaoSelecionado.id);
+            const compras = (await db.getAll('compras')).filter(c => c.cartaoId === cartaoSelecionado.id);
 
             compras.forEach(compra => {
                 const dataCompra = new Date(compra.data);
@@ -503,16 +520,16 @@
             document.getElementById('modalPagamento').style.display = 'flex';
         }
 
-        function carregarBancosSelect(selectId) {
+        async function carregarBancosSelect(selectId) {
             const select = document.getElementById(selectId);
-            const bancos = db.getAll('bancos');
+            const bancos = await db.getAll('bancos');
             select.innerHTML = '<option value="">Selecione um banco</option>';
             bancos.forEach(banco => {
                 select.innerHTML += `<option value="${banco.id}">${banco.nome}</option>`;
             });
         }
         
-        function confirmarPagamentoFatura() {
+        async function confirmarPagamentoFatura() {
             const cartaoId = parseInt(document.getElementById('cartaoPagamentoId').value);
             const dataPagamento = document.getElementById('dataPagamento').value;
             const bancoId = parseInt(document.getElementById('bancoSelecionado').value);
@@ -531,11 +548,11 @@
             }
             
             cartao.faturasPagas.push({ dataPagamento, valor, bancoId });
-            db.save('cartoes', cartao);
+            await db.save('cartoes', cartao);
             
-            atualizarSaldoBanco(bancoId, -valor);
+            await atualizarSaldoBanco(bancoId, -valor);
             
-            registrarTransacao({
+            await registrarTransacao({
                 tipo: 'saida',
                 descricao: `Pagamento de fatura - ${cartao.nome}`,
                 valor: valor,
@@ -550,19 +567,21 @@
             Utils.mostrarMensagem('Pagamento registrado com sucesso!', 'sucesso');
         }
         
-        function atualizarSaldoBanco(bancoId, valor) {
-            const banco = db.getAll('bancos').find(b => b.id === bancoId);
+        async function atualizarSaldoBanco(bancoId, valor) {
+            const bancos = await db.getAll('bancos');
+            const banco = bancos.find(b => b.id === bancoId);
             if (banco) {
                 banco.saldo = parseFloat(banco.saldo) + valor;
-                db.save('bancos', banco);
+                await db.save('bancos', banco);
             }
         }
         
-        function registrarTransacao(transacao) {
-            const transacoes = db.getAll('transacoes') || [];
+        async function registrarTransacao(transacao) {
+            let transacoes = await db.getAll('transacoes');
+            if (!Array.isArray(transacoes)) transacoes = [];
             transacao.id = Date.now();
             transacoes.push(transacao);
-            db.saveAll('transacoes', transacoes);
+            await db.saveAll('transacoes', transacoes);
         }
 
         function fecharModal(modalId) {
@@ -570,14 +589,15 @@
         }
         
         // Funções para CRUD de Cartão
-        function abrirModalCartao(id = null) {
+        async function abrirModalCartao(id = null) {
             const modal = document.getElementById('modalCartao');
             const titulo = document.getElementById('modalTituloCartao');
             const form = document.getElementById('formCartao');
             form.reset();
 
             if (id) {
-                const cartao = db.getAll('cartoes').find(c => c.id === id);
+                const cartoes = await db.getAll('cartoes');
+                const cartao = cartoes.find(c => c.id === id);
                 if (cartao) {
                     titulo.textContent = 'Editar Cartão';
                     document.getElementById('cartaoId').value = cartao.id;
@@ -599,7 +619,7 @@
             fecharModal('modalCartao');
         }
 
-        function salvarCartao(event) {
+        async function salvarCartao(event) {
             event.preventDefault();
             const id = document.getElementById('cartaoId').value;
             const cartaoData = {
@@ -611,13 +631,13 @@
             };
 
             if (id) {
-                db.update('cartoes', Number(id), cartaoData);
+                await db.update('cartoes', Number(id), cartaoData);
             } else {
-                db.insert('cartoes', cartaoData);
+                await db.insert('cartoes', cartaoData);
             }
 
             fecharModalCartao();
-            carregarCartoes();
+            await carregarCartoes();
             Utils.mostrarMensagem('Cartão salvo com sucesso!', 'sucesso');
         }
 
@@ -625,27 +645,25 @@
             abrirModalCartao(id);
         }
 
-        function excluirCartao(id) {
+        async function excluirCartao(id) {
             if (confirm('Tem certeza que deseja excluir este cartão? Todas as compras associadas também serão removidas.')) {
-                db.delete('cartoes', id);
-                
-                const compras = db.getAll('compras').filter(c => c.cartaoId !== id);
-                db.saveAll('compras', compras);
-
-                carregarCartoes();
-                carregarCompras();
+                await db.delete('cartoes', id);
+                const compras = (await db.getAll('compras')).filter(c => c.cartaoId !== id);
+                await db.saveAll('compras', compras);
+                await carregarCartoes();
+                await carregarCompras();
                 Utils.mostrarMensagem('Cartão excluído com sucesso!', 'sucesso');
             }
         }
         
         // Funções para CRUD de Compra
-        function carregarCompras() {
-            const compras = db.getAll('compras');
-            const cartoes = db.getAll('cartoes');
+        async function carregarCompras() {
+            const compras = await db.getAll('compras');
+            const cartoes = await db.getAll('cartoes');
             const tbody = document.getElementById('tabelaCompras');
             tbody.innerHTML = '';
-            
-            compras.forEach(compra => {
+            if (!Array.isArray(compras)) return;
+            for (const compra of compras) {
                 const cartao = cartoes.find(c => c.id === compra.cartaoId);
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -664,19 +682,20 @@
                     </td>
                 `;
                 tbody.appendChild(tr);
-            });
+            }
         }
         
-        function abrirModalCompra(id = null) {
+        async function abrirModalCompra(id = null) {
             const modal = document.getElementById('modalCompra');
             const titulo = document.getElementById('modalTituloCompra');
             const form = document.getElementById('formCompra');
             form.reset();
 
-            carregarCartoesSelect('cartaoCompra');
+            await carregarCartoesSelect('cartaoCompra');
 
             if (id) {
-                const compra = db.getAll('compras').find(c => c.id === id);
+                const compras = await db.getAll('compras');
+                const compra = compras.find(c => c.id === id);
                 if (compra) {
                     titulo.textContent = 'Editar Compra';
                     document.getElementById('compraId').value = compra.id;
@@ -699,7 +718,7 @@
             fecharModal('modalCompra');
         }
 
-        function salvarCompra(event) {
+        async function salvarCompra(event) {
             event.preventDefault();
             const id = document.getElementById('compraId').value;
             const compraData = {
@@ -711,14 +730,14 @@
             };
 
             if (id) {
-                db.update('compras', Number(id), compraData);
+                await db.update('compras', Number(id), compraData);
             } else {
-                db.insert('compras', compraData);
+                await db.insert('compras', compraData);
             }
 
             fecharModalCompra();
-            carregarCompras();
-            carregarCartoes(); // Atualiza fatura na tabela de cartões
+            await carregarCompras();
+            await carregarCartoes(); // Atualiza fatura na tabela de cartões
             Utils.mostrarMensagem('Compra salva com sucesso!', 'sucesso');
         }
 

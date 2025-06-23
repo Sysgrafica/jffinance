@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Finnairaceora</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <div class="nav-logo">
+                <i class="fas fa-wallet"></i> Finnairaceora
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h2>Criar Conta</h2>
+                <p>Cadastre-se para começar a usar o sistema</p>
+            </div>
+            
+            <div id="cadastroError" class="auth-error"></div>
+            <div id="cadastroSuccess" class="auth-success"></div>
+            
+            <form id="cadastroForm" class="auth-form">
+                <div class="form-group">
+                    <label for="nome" class="form-label">Nome completo</label>
+                    <input type="text" id="nome" class="form-input" placeholder="Seu nome completo" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email" class="form-label">E-mail</label>
+                    <input type="email" id="email" class="form-input" placeholder="Seu e-mail" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="senha" class="form-label">Senha</label>
+                    <input type="password" id="senha" class="form-input" placeholder="Sua senha" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmarSenha" class="form-label">Confirmar senha</label>
+                    <input type="password" id="confirmarSenha" class="form-input" placeholder="Confirme sua senha" required>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn-auth">
+                        <i class="fas fa-user-plus"></i> Criar Conta
+                    </button>
+                </div>
+            </form>
+            
+            <div class="auth-links">
+                <a href="login.html">Já tem uma conta? Faça login</a>
+            </div>
+            
+            <div class="auth-separator">
+                <hr>
+                <span>ou</span>
+                <hr>
+            </div>
+            
+            <div class="social-auth">
+                <button class="social-auth-btn" onclick="loginComGoogle()">
+                    <i class="fab fa-google" style="color: #DB4437;"></i>
+                </button>
+                <button class="social-auth-btn" onclick="loginComFacebook()">
+                    <i class="fab fa-facebook-f" style="color: #4267B2;"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
+    </footer>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Nossa inicialização do Firebase -->
+    <script src="assets/js/firebase-init.js"></script>
+    
+    <!-- Scripts da aplicação -->
+    <script src="assets/js/auth.js"></script>
+    
+    <script>
+        document.getElementById('cadastroForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const nome = document.getElementById('nome').value;
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const confirmarSenha = document.getElementById('confirmarSenha').value;
+            
+            const errorElement = document.getElementById('cadastroError');
+            const successElement = document.getElementById('cadastroSuccess');
+            
+            errorElement.style.display = 'none';
+            successElement.style.display = 'none';
+            
+            // Validar se as senhas coincidem
+            if (senha !== confirmarSenha) {
+                errorElement.textContent = "As senhas não coincidem.";
+                errorElement.style.display = 'block';
+                return;
+            }
+            
+            // Validar complexidade da senha
+            if (senha.length < 6) {
+                errorElement.textContent = "A senha deve ter pelo menos 6 caracteres.";
+                errorElement.style.display = 'block';
+                return;
+            }
+            
+            // Desabilitar o botão durante o cadastro
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando conta...';
+            
+            try {
+                const result = await authManager.cadastrar(email, senha, nome);
+                
+                if (result.success) {
+                    successElement.textContent = "Conta criada com sucesso! Redirecionando...";
+                    successElement.style.display = 'block';
+                    
+                    // Redirecionar para o dashboard após um breve delay
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1500);
+                } else {
+                    errorElement.textContent = result.mensagem;
+                    errorElement.style.display = 'block';
+                    
+                    // Restaurar o botão
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-user-plus"></i> Criar Conta';
+                }
+            } catch (error) {
+                console.error("Erro ao cadastrar:", error);
+                errorElement.textContent = "Erro ao criar conta. Tente novamente.";
+                errorElement.style.display = 'block';
+                
+                // Restaurar o botão
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="fas fa-user-plus"></i> Criar Conta';
+            }
+        });
+        
+        // Função para login com Google
+        function loginComGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    // Criar ou atualizar o documento do usuário no Firestore
+                    const user = result.user;
+                    firebase.firestore().collection('usuarios').doc(user.uid).set({
+                        nome: user.displayName,
+                        email: user.email,
+                        foto: user.photoURL,
+                        dataCriacao: new Date()
+                    }, { merge: true });
+                    
+                    // Redirecionar para o dashboard
+                    window.location.href = 'index.html';
+                })
+                .catch((error) => {
+                    console.error("Erro ao fazer login com Google:", error);
+                    const errorElement = document.getElementById('cadastroError');
+                    errorElement.textContent = "Erro ao fazer login com Google. Tente novamente.";
+                    errorElement.style.display = 'block';
+                });
+        }
+        
+        // Função para login com Facebook
+        function loginComFacebook() {
+            const provider = new firebase.auth.FacebookAuthProvider();
+            
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    // Criar ou atualizar o documento do usuário no Firestore
+                    const user = result.user;
+                    firebase.firestore().collection('usuarios').doc(user.uid).set({
+                        nome: user.displayName,
+                        email: user.email,
+                        foto: user.photoURL,
+                        dataCriacao: new Date()
+                    }, { merge: true });
+                    
+                    // Redirecionar para o dashboard
+                    window.location.href = 'index.html';
+                })
+                .catch((error) => {
+                    console.error("Erro ao fazer login com Facebook:", error);
+                    const errorElement = document.getElementById('cadastroError');
+                    errorElement.textContent = "Erro ao fazer login com Facebook. Tente novamente.";
+                    errorElement.style.display = 'block';
+                });
+        }
+    </script>
+</body>
+</html> 

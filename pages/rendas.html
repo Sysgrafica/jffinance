@@ -28,6 +28,9 @@
                 <li><a href="gastos.html" class="nav-link"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
                 <li><a href="rendas.html" class="nav-link active"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
                 <li><a href="settings.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+                <li id="userInfo">
+                    <!-- O conteúdo será preenchido pelo script de autenticação -->
+                </li>
             </ul>
         </nav>
     </header>
@@ -120,6 +123,12 @@
                     <label class="form-label" for="categoriaRenda">Categoria*</label>
                     <select id="categoriaRenda" class="form-input" required onchange="configurarDiaRecebimento()">
                         <option value="">Selecione uma categoria</option>
+                        <option value="Salário">Salário</option>
+                        <option value="Quinzena">Quinzena</option>
+                        <option value="Investimentos">Investimentos</option>
+                        <option value="Freelance">Freelance</option>
+                        <option value="Aluguel">Aluguel</option>
+                        <option value="Outros">Outros</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -188,7 +197,18 @@
 
     <!-- Carregar scripts sem usar módulos ES6 -->
     <script src="../assets/js/utils.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Nossa inicialização do Firebase -->
+    <script src="../assets/js/firebase-init.js"></script>
+    
+    <script src="../assets/js/auth.js"></script>
     <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/main.js"></script>
     <script>
         // Variáveis globais para os gráficos
         let graficoRendasCategorias = null;
@@ -295,11 +315,9 @@
 
         function salvarRendaUnica(id) {
             const tipo = document.getElementById('tipoRenda').value;
-            const categoriaSelect = document.getElementById('categoriaRenda');
             const rendaData = {
                 descricao: document.getElementById('descricaoRenda').value,
-                categoriaId: categoriaSelect.value,
-                categoria: categoriaSelect.options[categoriaSelect.selectedIndex].text,
+                categoria: document.getElementById('categoriaRenda').value,
                 valor: parseFloat(document.getElementById('valorRenda').value),
                 tipo: tipo,
             };
@@ -329,7 +347,7 @@
             const valorTotal = parseFloat(document.getElementById('valorRenda').value);
             const numParcelas = parseInt(document.getElementById('parcelasRenda').value) || 1;
             const dataPrimeiraParcela = new Date(document.getElementById('dataRenda').value + 'T00:00:00');
-            const categoriaSelect = document.getElementById('categoriaRenda');
+            const categoria = document.getElementById('categoriaRenda').value;
 
             const valorParcela = valorTotal / numParcelas;
 
@@ -338,8 +356,7 @@
                 
                 const rendaData = {
                     descricao: `${descricaoBase} (${i + 1}/${numParcelas})`,
-                    categoriaId: categoriaSelect.value,
-                    categoria: categoriaSelect.options[categoriaSelect.selectedIndex].text,
+                    categoria: categoria,
                     valor: valorParcela,
                     tipo: 'variavel',
                     data: dataParcela.toISOString().split('T')[0],
@@ -358,72 +375,62 @@
             atualizarGraficos();
         }
 
-        function carregarTabelas() {
-            carregarRendasFixas();
-            carregarRendasVariaveis();
-        }
-
-        function carregarRendasFixas() {
-            const rendas = db.getAll('rendas_fixas');
+        // Função para carregar rendas fixas
+        async function carregarRendasFixas() {
+            const rendas = await db.getAll('rendas_fixas');
             const tbody = document.getElementById('tabelaRendasFixas');
             tbody.innerHTML = '';
-
             const hoje = new Date();
             const mesAtual = hoje.getMonth();
             const anoAtual = hoje.getFullYear();
             const diaAtual = hoje.getDate();
-
-            rendas.forEach(renda => {
-                const tr = document.createElement('tr');
-                
-                // Calcular a data real de recebimento com base nas regras
-                const dataRecebimento = obterDataRealRecebimento(renda, mesAtual, anoAtual);
-                const diaRecebimento = dataRecebimento.getDate();
-                
-                // Determinar o status com base na data real de recebimento
-                const status = diaAtual > diaRecebimento ? 'status-atrasado' : 'status-pendente';
-                
-                // Determinar o texto de recebimento com base nas regras
-                let textoRecebimento = `Todo dia ${renda.recebimento}`;
-                
-                if (renda.regraRecebimento === 'dia-util' && renda.descricaoRegra) {
-                    textoRecebimento = `${renda.descricaoRegra} (dia ${diaRecebimento})`;
-                } 
-                else if (renda.regraRecebimento === 'dia-util-se-fds' && renda.descricaoRegra) {
-                    textoRecebimento = `${renda.descricaoRegra} (dia ${diaRecebimento})`;
-                }
-                
-                tr.innerHTML = `
-                    <td>${renda.descricao}</td>
-                    <td>${renda.categoria}</td>
-                    <td class="positive">${Utils.formatarMoeda(renda.valor)}</td>
-                    <td>${textoRecebimento}</td>
-                    <td><span class="${status}">${status === 'status-atrasado' ? 'Atrasado' : 'Pendente'}</span></td>
-                    <td>
-                        <button class="btn btn-primario" onclick="editarRenda('${renda.id}', 'fixa')">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-perigo" onclick="excluirRenda('${renda.id}', 'fixa')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            if (Array.isArray(rendas)) {
+                rendas.forEach(renda => {
+                    const tr = document.createElement('tr');
+                    // Calcular a data real de recebimento com base nas regras
+                    const dataRecebimento = obterDataRealRecebimento(renda, mesAtual, anoAtual);
+                    const diaRecebimento = dataRecebimento.getDate();
+                    // Determinar o status com base na data real de recebimento
+                    const status = diaAtual > diaRecebimento ? 'status-atrasado' : 'status-pendente';
+                    // Determinar o texto de recebimento com base nas regras
+                    let textoRecebimento = `Todo dia ${renda.recebimento}`;
+                    if (renda.regraRecebimento === 'dia-util' && renda.descricaoRegra) {
+                        textoRecebimento = `${renda.descricaoRegra} (dia ${diaRecebimento})`;
+                    } 
+                    else if (renda.regraRecebimento === 'dia-util-se-fds' && renda.descricaoRegra) {
+                        textoRecebimento = `${renda.descricaoRegra} (dia ${diaRecebimento})`;
+                    }
+                    tr.innerHTML = `
+                        <td>${renda.descricao}</td>
+                        <td>${renda.categoria}</td>
+                        <td class="positive">${Utils.formatarMoeda(renda.valor)}</td>
+                        <td>${textoRecebimento}</td>
+                        <td><span class="${status}">${status === 'status-atrasado' ? 'Atrasado' : 'Pendente'}</span></td>
+                        <td>
+                            <button class="btn btn-primario" onclick="editarRenda('${renda.id}', 'fixa')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-perigo" onclick="excluirRenda('${renda.id}', 'fixa')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
         }
 
-        function carregarRendasVariaveis() {
-            const rendas = db.getAll('rendas').filter(r => r.tipo === 'variavel');
+        // Função para carregar rendas variáveis
+        async function carregarRendasVariaveis() {
+            const rendasAll = await db.getAll('rendas');
+            const rendas = Array.isArray(rendasAll) ? rendasAll.filter(r => r.tipo === 'variavel') : [];
             const tbody = document.getElementById('tabelaRendasVariaveis');
             tbody.innerHTML = '';
-
             rendas.sort((a, b) => new Date(a.data) - new Date(b.data));
-
             rendas.forEach(renda => {
                 const tr = document.createElement('tr');
                 let statusBadge;
                 let acoes;
-
                 if (renda.status === 'Recebido') {
                     statusBadge = `<span class="badge badge-sucesso">Recebido</span>`;
                     acoes = `
@@ -443,7 +450,6 @@
                             <i class="fas fa-trash"></i>
                         </button>`;
                 }
-
                 tr.innerHTML = `
                     <td>${Utils.formatarData(new Date(renda.data))}</td>
                     <td>${renda.descricao}</td>
@@ -455,21 +461,22 @@
             });
         }
 
-        function abrirModalConfirmacao(id) {
-            const renda = db.getAll('rendas').find(r => r.id === id);
+        // Função para abrir modal de confirmação de recebimento
+        async function abrirModalConfirmacao(id) {
+            const rendas = await db.getAll('rendas');
+            const renda = Array.isArray(rendas) ? rendas.find(r => r.id === id) : null;
             if (!renda) return;
-
             document.getElementById('descricaoRecebimento').textContent = renda.descricao;
             document.getElementById('valorRecebimento').textContent = Utils.formatarMoeda(renda.valor);
             document.getElementById('rendaRecebimentoId').value = id;
-
             const selectBanco = document.getElementById('bancoRecebimento');
-            const bancos = db.getAll('bancos');
+            const bancos = await db.getAll('bancos');
             selectBanco.innerHTML = '<option value="">Selecione um banco</option>';
-            bancos.forEach(banco => {
-                selectBanco.innerHTML += `<option value="${banco.id}">${banco.nome}</option>`;
-            });
-
+            if (Array.isArray(bancos)) {
+                bancos.forEach(banco => {
+                    selectBanco.innerHTML += `<option value="${banco.id}">${banco.nome}</option>`;
+                });
+            }
             const modal = document.getElementById('modalConfirmarRecebimento');
             modal.classList.add('active');
             modal.style.display = 'flex';
@@ -480,40 +487,39 @@
             const bancoId = parseInt(document.getElementById('bancoRecebimento').value);
             
             if (!bancoId) {
-                Utils.mostrarMensagem('Selecione um banco para confirmar o recebimento.', 'erro');
+                Utils.mostrarMensagem('Por favor, selecione um banco.', 'erro');
                 return;
             }
 
-            // Busca a renda pelo ID
-            const rendas = db.getAll('rendas');
-            const renda = rendas.find(r => r.id === rendaId);
-
-            if (!renda) {
-                Utils.mostrarMensagem('Renda não encontrada.', 'erro');
-                return;
-            }
-
-            // Atualiza o status da renda para 'Recebido'
+            const renda = db.getAll('rendas').find(r => r.id === rendaId);
+            if (!renda) return;
+            
+            // Atualiza status da renda
             renda.status = 'Recebido';
-            renda.bancoId = bancoId;
-            renda.dataRecebimento = new Date().toISOString().split('T')[0];
+            db.save('rendas', renda);
 
-            // Atualiza a renda no banco de dados
-            db.update('rendas', rendaId, renda);
-
-            // Fecha o modal
-            fecharModal('modalConfirmarRecebimento');
-
-            // Recarrega as tabelas e atualiza os gráficos
-            carregarTabelas();
-            atualizarGraficos();
-
-            // Atualiza as metas de renda no dashboard
-            if (window.carregarMetasRenda) {
-                window.carregarMetasRenda();
+            // Atualiza saldo do banco
+            const banco = db.getAll('bancos').find(b => b.id === bancoId);
+            if(banco) {
+                banco.saldo += renda.valor;
+                db.save('bancos', banco);
             }
+
+            // Registra a transação
+            db.insert('transacoes', {
+                tipo: 'entrada',
+                descricao: `Recebimento: ${renda.descricao}`,
+                valor: renda.valor,
+                data: renda.data,
+                bancoId: bancoId,
+                categoria: renda.categoria,
+                id: Date.now()
+            });
 
             Utils.mostrarMensagem('Recebimento confirmado com sucesso!', 'sucesso');
+            fecharModal('modalConfirmarRecebimento');
+            carregarTabelas();
+            atualizarGraficos();
         }
 
         function fecharModal(modalId) {
@@ -531,19 +537,21 @@
             }
         }
 
-        function atualizarGraficos() {
+        // Atualiza os gráficos
+        async function atualizarGraficos() {
             const mesSelecionado = document.getElementById('mesGrafico').value;
             const [ano, mes] = mesSelecionado.split('-');
             const primeiroDia = new Date(ano, mes - 1, 1);
             const ultimoDia = new Date(ano, mes, 0);
 
             // Gráfico de rendas por categoria
-            const rendasFixas = db.getAll('rendas_fixas');
-            const rendasVariaveis = db.getAll('rendas_variaveis')
-                .filter(renda => {
-                    const data = new Date(renda.data);
-                    return data >= primeiroDia && data <= ultimoDia;
-                });
+            const rendasFixasAll = await db.getAll('rendas_fixas');
+            const rendasVariaveisAll = await db.getAll('rendas_variaveis');
+            const rendasFixas = Array.isArray(rendasFixasAll) ? rendasFixasAll : [];
+            const rendasVariaveis = Array.isArray(rendasVariaveisAll) ? rendasVariaveisAll.filter(renda => {
+                const data = new Date(renda.data);
+                return data >= primeiroDia && data <= ultimoDia;
+            }) : [];
 
             const categorias = {};
             [...rendasFixas, ...rendasVariaveis].forEach(renda => {
@@ -587,33 +595,28 @@
             // Gráfico de evolução das rendas
             const ultimosMeses = [];
             const valoresMeses = [];
-            
             for (let i = 5; i >= 0; i--) {
                 const dataRef = new Date();
                 dataRef.setMonth(dataRef.getMonth() - i);
                 const anoRef = dataRef.getFullYear();
                 const mesRef = dataRef.getMonth() + 1;
-                
                 const primeiroDiaMes = new Date(anoRef, mesRef - 1, 1);
                 const ultimoDiaMes = new Date(anoRef, mesRef, 0);
-                
-                const rendasVariaveisMes = db.getAll('rendas_variaveis')
-                    .filter(renda => {
-                        const data = new Date(renda.data);
-                        return data >= primeiroDiaMes && data <= ultimoDiaMes;
-                    });
-                
+                const rendasVariaveisMesAll = await db.getAll('rendas_variaveis');
+                const rendasFixasMesAll = await db.getAll('rendas_fixas');
+                const rendasVariaveisMes = Array.isArray(rendasVariaveisMesAll) ? rendasVariaveisMesAll.filter(renda => {
+                    const data = new Date(renda.data);
+                    return data >= primeiroDiaMes && data <= ultimoDiaMes;
+                }) : [];
+                const rendasFixasMes = Array.isArray(rendasFixasMesAll) ? rendasFixasMesAll : [];
                 const totalMes = rendasVariaveisMes.reduce((acc, renda) => acc + Number(renda.valor), 0) +
-                                rendasFixas.reduce((acc, renda) => acc + Number(renda.valor), 0);
-                
+                                rendasFixasMes.reduce((acc, renda) => acc + Number(renda.valor), 0);
                 ultimosMeses.push(`${mesRef}/${anoRef}`);
                 valoresMeses.push(totalMes);
             }
-            
             if (graficoEvolucaoRendas) {
                 graficoEvolucaoRendas.destroy();
             }
-            
             const ctx2 = document.getElementById('graficoEvolucaoRendas').getContext('2d');
             graficoEvolucaoRendas = new Chart(ctx2, {
                 type: 'line',
@@ -643,32 +646,19 @@
             });
         }
 
-        // Inicialização
+        // Corrigir chamada de carregarTabelas para aguardar as funções assíncronas
+        async function carregarTabelas() {
+            await carregarRendasFixas();
+            await carregarRendasVariaveis();
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('mesGrafico').value = new Date().toISOString().slice(0, 7);
             carregarTabelas();
             atualizarGraficos();
 
             document.getElementById('btnConfirmarRecebimento').addEventListener('click', confirmarRecebimento);
-
-            // Carregar categorias de renda
-            carregarCategoriasRenda();
         });
-
-        function carregarCategoriasRenda() {
-            const selectCategoria = document.getElementById('categoriaRenda');
-            selectCategoria.innerHTML = '<option value="">Selecione uma categoria</option>';
-
-            const categorias = db.getAll('categorias_rendas') || [];
-            
-            categorias.forEach(categoria => {
-                const option = document.createElement('option');
-                option.value = categoria.id;
-                option.textContent = categoria.nome;
-                option.setAttribute('data-icone', categoria.icone);
-                selectCategoria.appendChild(option);
-            });
-        }
 
         // Funções utilitárias para cálculo de dias úteis
         function isDiaUtil(data) {

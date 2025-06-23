@@ -69,6 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Configurações globais de tema
     configurarTema();
+
+    // Verificar o modo offline quando o documento estiver pronto
+    verificarModoOffline();
 });
 
 // Configurar tema do aplicativo
@@ -88,6 +91,43 @@ function alternarTema() {
     
     const temaAtual = document.body.classList.contains('tema-escuro') ? 'escuro' : 'claro';
     localStorage.setItem('tema', temaAtual);
+}
+
+// Função para verificar se estamos usando o modo offline (fallback)
+function verificarModoOffline() {
+    if (window.usingFirebaseFallback) {
+        mostrarIndicadorOffline();
+    }
+}
+
+// Função para mostrar o indicador de modo offline
+function mostrarIndicadorOffline() {
+    // Verificar se o indicador já existe
+    let indicador = document.querySelector('.modo-offline');
+    
+    if (!indicador) {
+        // Criar o indicador
+        indicador = document.createElement('div');
+        indicador.className = 'modo-offline';
+        indicador.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>Modo Offline (dados salvos localmente)</span>
+            <button class="btn-link" onclick="mostrarAjudaFirebase()">Ajuda</button>
+        `;
+        
+        // Adicionar ao corpo do documento
+        document.body.appendChild(indicador);
+    } else {
+        // Mostrar o indicador se estiver oculto
+        indicador.classList.remove('modo-offline-hidden');
+    }
+}
+
+// Função para mostrar ajuda sobre o Firebase
+function mostrarAjudaFirebase() {
+    alert('O sistema está operando no modo offline devido a problemas de conexão com o Firebase.\n\n' +
+          'Seus dados estão sendo salvos localmente no navegador.\n\n' +
+          'Para configurar o Firebase e usar o modo online, consulte o arquivo FIREBASE_SETUP.md');
 }
 
 // Exportar funções globais (se necessário)

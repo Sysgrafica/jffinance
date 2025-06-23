@@ -1,0 +1,163 @@
+# Configuração das Regras de Segurança do Firebase
+
+O erro "Missing or insufficient permissions" ocorre porque as regras de segurança do Firebase Firestore estão bloqueando o acesso aos dados.
+
+## Como resolver:
+
+1. Acesse o [Console do Firebase](https://console.firebase.google.com/)
+2. Selecione seu projeto "jffinances-3d813"
+3. No menu lateral, clique em "Firestore Database"
+4. Clique na aba "Regras"
+5. Substitua as regras atuais por estas (para desenvolvimento):
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+```
+
+6. Clique em "Publicar"
+
+> **IMPORTANTE**: Estas regras permitem acesso total ao banco de dados sem autenticação. 
+> São adequadas apenas para desenvolvimento.
+> Para um ambiente de produção, você deve implementar autenticação e regras mais restritivas.
+
+## Regras para produção (exemplo com autenticação):
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Autenticação necessária para todas as operações
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+Após atualizar as regras, recarregue sua aplicação e o erro deve desaparecer. 
+
+# Regras de Segurança do Firebase para o Finnairaceora
+
+## IMPORTANTE: SIGA ESTAS INSTRUÇÕES PARA RESOLVER O ERRO DE PERMISSÃO
+
+Se você está vendo o erro "FirebaseError: Missing or insufficient permissions", siga estas instruções para configurar as regras de segurança do Firestore:
+
+1. Acesse o [Console do Firebase](https://console.firebase.google.com/)
+2. Faça login com sua conta Google
+3. Selecione o projeto "jffinances-3d813" (ou o nome do seu projeto)
+4. No menu lateral esquerdo, clique em **Firestore Database**
+5. Clique na aba **Regras**
+6. Substitua **TODO** o conteúdo atual pelas regras abaixo:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+```
+
+7. Clique no botão **Publicar**
+
+Estas regras permitem acesso total ao banco de dados sem autenticação, o que é adequado apenas para desenvolvimento. Após resolver o problema, você deve implementar regras mais restritivas para produção.
+
+## Regras para Desenvolvimento (permissivas)
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+```
+
+## Regras para Produção (recomendadas)
+Substitua as regras acima por estas quando estiver pronto para produção:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Autenticação necessária para todas as operações
+    match /{document=**} {
+      allow read, write: if false;  // Bloqueio padrão, sobrescrito por regras específicas
+    }
+    
+    // Regras para a coleção de usuários
+    match /usuarios/{userId} {
+      // Usuários só podem ler/escrever seus próprios dados
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Subcoleções do usuário
+      match /{collection}/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Coleções específicas do usuário
+    match /usuarios/{userId}/bancos/{bancoId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /usuarios/{userId}/cartoes/{cartaoId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /usuarios/{userId}/gastos_fixos/{gastoId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /usuarios/{userId}/gastos_variaveis/{gastoId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /usuarios/{userId}/rendas_fixas/{rendaId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /usuarios/{userId}/rendas_variaveis/{rendaId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Coleções globais (compartilhadas)
+    match /categorias_gastos/{id} {
+      allow read: if request.auth != null;
+      allow write: if false; // Somente administradores podem modificar
+    }
+    
+    match /categorias_rendas/{id} {
+      allow read: if request.auth != null;
+      allow write: if false; // Somente administradores podem modificar
+    }
+  }
+}
+```
+
+## Regras para Storage (se você usar o Firebase Storage para armazenar comprovantes)
+```
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;  // Bloqueio padrão
+    }
+    
+    // Permitir acesso aos comprovantes do usuário
+    match /usuarios/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+``` 

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Finnairaceora</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <div class="nav-logo">
+                <i class="fas fa-wallet"></i> Finnairaceora
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h2>Entrar</h2>
+                <p>Faça login para acessar o sistema</p>
+            </div>
+            
+            <div id="loginError" class="auth-error"></div>
+            <div id="loginSuccess" class="auth-success"></div>
+            
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="email" class="form-label">E-mail</label>
+                    <input type="email" id="email" class="form-input" placeholder="Seu e-mail" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="senha" class="form-label">Senha</label>
+                    <input type="password" id="senha" class="form-input" placeholder="Sua senha" required>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn-auth">
+                        <i class="fas fa-sign-in-alt"></i> Entrar
+                    </button>
+                </div>
+            </form>
+            
+            <div class="auth-links">
+                <a href="recuperar-senha.html">Esqueceu sua senha?</a>
+                <br>
+                <a href="cadastro.html">Não tem uma conta? Cadastre-se</a>
+            </div>
+            
+            <div class="auth-separator">
+                <hr>
+                <span>ou</span>
+                <hr>
+            </div>
+            
+            <div class="social-auth">
+                <button class="social-auth-btn" onclick="loginComGoogle()">
+                    <i class="fab fa-google" style="color: #DB4437;"></i>
+                </button>
+                <button class="social-auth-btn" onclick="loginComFacebook()">
+                    <i class="fab fa-facebook-f" style="color: #4267B2;"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
+    </footer>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Nossa inicialização do Firebase -->
+    <script src="assets/js/firebase-init.js"></script>
+    
+    <!-- Scripts da aplicação -->
+    <script src="assets/js/auth.js"></script>
+    
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            
+            const errorElement = document.getElementById('loginError');
+            const successElement = document.getElementById('loginSuccess');
+            
+            errorElement.style.display = 'none';
+            successElement.style.display = 'none';
+            
+            // Desabilitar o botão durante o login
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+            
+            try {
+                const result = await authManager.login(email, senha);
+                
+                if (result.success) {
+                    successElement.textContent = "Login realizado com sucesso! Redirecionando...";
+                    successElement.style.display = 'block';
+                    
+                    // Redirecionar para o dashboard após um breve delay
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    errorElement.textContent = result.mensagem;
+                    errorElement.style.display = 'block';
+                    
+                    // Restaurar o botão
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+                }
+            } catch (error) {
+                console.error("Erro ao fazer login:", error);
+                errorElement.textContent = "Erro ao fazer login. Tente novamente.";
+                errorElement.style.display = 'block';
+                
+                // Restaurar o botão
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+            }
+        });
+        
+        // Função para login com Google
+        function loginComGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    // Criar ou atualizar o documento do usuário no Firestore
+                    const user = result.user;
+                    firebase.firestore().collection('usuarios').doc(user.uid).set({
+                        nome: user.displayName,
+                        email: user.email,
+                        foto: user.photoURL,
+                        ultimoLogin: new Date()
+                    }, { merge: true });
+                    
+                    // Redirecionar para o dashboard
+                    window.location.href = 'index.html';
+                })
+                .catch((error) => {
+                    console.error("Erro ao fazer login com Google:", error);
+                    const errorElement = document.getElementById('loginError');
+                    errorElement.textContent = "Erro ao fazer login com Google. Tente novamente.";
+                    errorElement.style.display = 'block';
+                });
+        }
+        
+        // Função para login com Facebook
+        function loginComFacebook() {
+            const provider = new firebase.auth.FacebookAuthProvider();
+            
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    // Criar ou atualizar o documento do usuário no Firestore
+                    const user = result.user;
+                    firebase.firestore().collection('usuarios').doc(user.uid).set({
+                        nome: user.displayName,
+                        email: user.email,
+                        foto: user.photoURL,
+                        ultimoLogin: new Date()
+                    }, { merge: true });
+                    
+                    // Redirecionar para o dashboard
+                    window.location.href = 'index.html';
+                })
+                .catch((error) => {
+                    console.error("Erro ao fazer login com Facebook:", error);
+                    const errorElement = document.getElementById('loginError');
+                    errorElement.textContent = "Erro ao fazer login com Facebook. Tente novamente.";
+                    errorElement.style.display = 'block';
+                });
+        }
+    </script>
+</body>
+</html> 

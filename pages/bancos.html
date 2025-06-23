@@ -70,6 +70,9 @@
                 <li><a href="gastos.html" class="nav-link"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
                 <li><a href="rendas.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
                 <li><a href="settings.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+                <li id="userInfo">
+                    <!-- O conteúdo será preenchido pelo script de autenticação -->
+                </li>
             </ul>
         </nav>
     </header>
@@ -281,207 +284,39 @@
         <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
     </footer>
 
-    <!-- Carregar scripts sem usar módulos ES6 -->
     <script src="../assets/js/utils.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Nossa inicialização do Firebase -->
+    <script src="../assets/js/firebase-init.js"></script>
+    
+    <script src="../assets/js/auth.js"></script>
     <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/main.js"></script>
+
     <script>
-        // Variável para armazenar a transação selecionada
-        let transacaoSelecionada = null;
-        
-        // Funções globais para o modal
-        function abrirModalBanco(bancoId = null) {
-            const modal = document.getElementById('modalBanco');
-            const titulo = document.getElementById('modalTitulo');
-            const form = document.getElementById('formBanco');
-
-            if (bancoId) {
-                const bancos = db.getAll('bancos');
-                const banco = bancos.find(b => b.id === Number(bancoId));
-                if (banco) {
-                    titulo.textContent = 'Editar Banco';
-                    document.getElementById('bancoId').value = banco.id;
-                    document.getElementById('nomeBanco').value = banco.nome;
-                    document.getElementById('agencia').value = banco.agencia;
-                    document.getElementById('conta').value = banco.conta;
-                    document.getElementById('tipoConta').value = banco.tipo;
-                    document.getElementById('saldo').value = banco.saldo;
-                }
-            } else {
-                titulo.textContent = 'Novo Banco';
-                form.reset();
-                document.getElementById('bancoId').value = '';
-            }
-
-            modal.classList.add('active');
-            modal.style.display = 'flex';
-        }
-
-        function fecharModalBanco() {
-            const modal = document.getElementById('modalBanco');
-            modal.classList.remove('active');
-            modal.style.display = 'none';
-        }
-        
-        function fecharModal(modalId) {
-            const modal = document.getElementById(modalId);
-            modal.classList.remove('active');
-            modal.style.display = 'none';
-        }
-
-        function salvarBanco(event) {
-            event.preventDefault();
-
-            const bancoData = {
-                nome: document.getElementById('nomeBanco').value,
-                agencia: document.getElementById('agencia').value,
-                conta: document.getElementById('conta').value,
-                tipo: document.getElementById('tipoConta').value,
-                saldo: Number(document.getElementById('saldo').value)
-            };
-
-            const bancoId = document.getElementById('bancoId').value;
-            
-            if (bancoId) {
-                // Atualizar banco existente
-                db.update('bancos', Number(bancoId), bancoData);
-            } else {
-                // Inserir novo banco
-                db.insert('bancos', bancoData);
-            }
-
+        // DOMContentLoaded para garantir que o DOM esteja pronto
+        document.addEventListener('DOMContentLoaded', () => {
             carregarBancos();
-            fecharModalBanco();
-            Utils.mostrarMensagem('Banco salvo com sucesso!', 'sucesso');
-        }
-
-        function editarBanco(id) {
-            abrirModalBanco(id);
-        }
-
-        function excluirBanco(id) {
-            if (confirm('Tem certeza que deseja excluir este banco?')) {
-                db.delete('bancos', Number(id));
-                carregarBancos();
-                Utils.mostrarMensagem('Banco excluído com sucesso!', 'sucesso');
-            }
-        }
-        
-        // Abre o modal para adicionar transação
-        function abrirModalTransacao() {
-            const modal = document.getElementById('modalTransacao');
-            const form = document.getElementById('formTransacao');
-            form.reset();
-            
-            // Preencher data e hora atuais
-            const agora = new Date();
-            document.getElementById('dataTransacao').valueAsDate = agora;
-            document.getElementById('horaTransacao').value = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            
-            // Carregar bancos no select
-            carregarBancosSelect('bancoTransacao');
-            
-            modal.classList.add('active');
-            modal.style.display = 'flex';
-        }
-        
-        // Salva uma nova transação
-        function salvarTransacao(event) {
-            event.preventDefault();
-            
-            const tipo = document.getElementById('tipoTransacao').value;
-            const descricao = document.getElementById('descricaoTransacao').value;
-            const valor = Number(document.getElementById('valorTransacao').value);
-            const data = document.getElementById('dataTransacao').value;
-            const hora = document.getElementById('horaTransacao').value;
-            const bancoId = Number(document.getElementById('bancoTransacao').value);
-            const categoria = document.getElementById('categoriaTransacao').value;
-            const origemDestino = document.getElementById('origemDestinoTransacao').value;
-            
-            // Combinar data e hora
-            const dataHora = new Date(`${data}T${hora}`);
-            
-            // Criar objeto de transação
-            const transacao = {
-                tipo: tipo,
-                descricao: descricao,
-                valor: valor,
-                data: dataHora.toISOString(),
-                bancoId: bancoId,
-                categoria: categoria,
-                origem: origemDestino
-            };
-            
-            // Registrar transação
-            registrarTransacao(transacao);
-            
-            // Atualizar saldo do banco
-            atualizarSaldoBanco(bancoId, tipo === 'entrada' ? valor : -valor);
-            
-            fecharModal('modalTransacao');
             carregarTransacoes();
-            Utils.mostrarMensagem('Transação registrada com sucesso!', 'sucesso');
-        }
+            configurarFiltros();
+        });
         
-        // Abre o modal de detalhes da transação
-        function abrirDetalhesTransacao(transacao) {
-            transacaoSelecionada = transacao;
+        // Carrega a lista de bancos
+        async function carregarBancos() {
+            const tabelaBancos = document.getElementById('tabelaBancos');
+            const filtroBancoSelect = document.getElementById('filtroBanco');
             
-            // Buscar banco
-            const bancos = db.getAll('bancos');
-            const banco = bancos.find(b => b.id === transacao.bancoId);
-            
-            // Preencher detalhes
-            document.getElementById('detalhe-tipo').innerHTML = `
-                <i class="fas ${transacao.tipo === 'entrada' ? 'fa-arrow-down icon-entrada' : 'fa-arrow-up icon-saida'}"></i>
-                ${transacao.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-            `;
-            
-            const dataHora = new Date(transacao.data);
-            document.getElementById('detalhe-data-hora').textContent = 
-                `${Utils.formatarData(dataHora)} ${dataHora.toLocaleTimeString('pt-BR')}`;
-            
-            document.getElementById('detalhe-descricao').textContent = transacao.descricao;
-            document.getElementById('detalhe-valor').textContent = Utils.formatarMoeda(transacao.valor);
-            document.getElementById('detalhe-valor').className = transacao.tipo === 'entrada' ? 'positive' : 'negative';
-            document.getElementById('detalhe-banco').textContent = banco ? banco.nome : 'Banco não encontrado';
-            document.getElementById('detalhe-categoria').textContent = transacao.categoria || 'Não categorizado';
-            document.getElementById('detalhe-origem-destino').textContent = transacao.origem || '-';
-            
-            const modal = document.getElementById('modalDetalhesTransacao');
-            modal.classList.add('active');
-            modal.style.display = 'flex';
-        }
-        
-        // Exclui a transação selecionada
-        function excluirTransacao() {
-            if (!transacaoSelecionada) return;
-            
-            if (confirm('Tem certeza que deseja excluir esta transação?')) {
-                // Obter todas as transações
-                const transacoes = db.getAll('transacoes');
-                
-                // Filtrar para remover a transação selecionada
-                const novasTransacoes = transacoes.filter(t => t.id !== transacaoSelecionada.id);
-                
-                // Reverter o efeito no saldo do banco
-                const valorReversao = transacaoSelecionada.tipo === 'entrada' ? 
-                    -transacaoSelecionada.valor : transacaoSelecionada.valor;
-                atualizarSaldoBanco(transacaoSelecionada.bancoId, valorReversao);
-                
-                // Salvar as transações atualizadas
-                db.saveAll('transacoes', novasTransacoes);
-                
-                fecharModal('modalDetalhesTransacao');
-                carregarTransacoes();
-                Utils.mostrarMensagem('Transação excluída com sucesso!', 'sucesso');
-            }
-        }
+            if (!tabelaBancos) return;
 
-        // Carrega os bancos na tabela
-        function carregarBancos() {
-            const bancos = db.getAll('bancos');
-            const tbody = document.getElementById('tabelaBancos');
-            tbody.innerHTML = '';
+            const bancos = await db.getAll('bancos');
+            
+            tabelaBancos.innerHTML = '';
+            filtroBancoSelect.innerHTML = '<option value="todos">Todos os Bancos</option>';
 
             bancos.forEach(banco => {
                 const tr = document.createElement('tr');
@@ -489,153 +324,237 @@
                     <td>${banco.nome}</td>
                     <td>${banco.agencia}</td>
                     <td>${banco.conta}</td>
-                    <td>${banco.tipo}</td>
-                    <td class="${Number(banco.saldo) >= 0 ? 'positive' : 'negative'}">${Utils.formatarMoeda(banco.saldo)}</td>
-                    <td>
-                        <button class="btn btn-primario" onclick="editarBanco(${banco.id})">
+                    <td>${banco.tipoConta}</td>
+                    <td>${Utils.formatarMoeda(banco.saldo)}</td>
+                    <td class="table-actions">
+                        <button class="btn-icon" onclick="editarBanco('${banco.id}')">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-perigo" onclick="excluirBanco(${banco.id})">
+                        <button class="btn-icon btn-perigo" onclick="excluirBanco('${banco.id}')">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 `;
-                tbody.appendChild(tr);
+                tabelaBancos.appendChild(tr);
+                
+                // Preencher o filtro de bancos
+                const option = document.createElement('option');
+                option.value = banco.id;
+                option.textContent = banco.nome;
+                filtroBancoSelect.appendChild(option);
+            });
+        }
+        
+        // Carrega a lista de transações
+        async function carregarTransacoes() {
+            const tabelaTransacoes = document.getElementById('tabelaTransacoes');
+            if (!tabelaTransacoes) return;
+
+            const [transacoes, bancos] = await Promise.all([
+                db.getAll('transacoes'),
+                db.getAll('bancos')
+            ]);
+            
+            const filtroBanco = document.getElementById('filtroBanco').value;
+            const filtroTipoAtivo = document.querySelector('.filtro-item.ativo').dataset.filtro;
+
+            const bancoMap = new Map(bancos.map(b => [b.id, b.nome]));
+
+            const transacoesFiltradas = transacoes.filter(t => {
+                const filtroBancoOk = filtroBanco === 'todos' || t.bancoId === filtroBanco;
+                const filtroTipoOk = filtroTipoAtivo === 'todos' || t.tipo === filtroTipoAtivo;
+                return filtroBancoOk && filtroTipoOk;
             });
             
-            // Atualizar o select de filtro de bancos
-            const selectBanco = document.getElementById('filtroBanco');
-            selectBanco.innerHTML = '<option value="todos">Todos os Bancos</option>';
+            tabelaTransacoes.innerHTML = '';
+            transacoesFiltradas.sort((a, b) => new Date(b.data) - new Date(a.data)).forEach(transacao => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => abrirModalDetalhesTransacao(transacao.id);
+                
+                const tipoIcon = transacao.tipo === 'entrada' 
+                    ? '<i class="fas fa-arrow-up icon-entrada"></i>' 
+                    : '<i class="fas fa-arrow-down icon-saida"></i>';
+
+                tr.innerHTML = `
+                    <td>${tipoIcon}</td>
+                    <td>${new Date(transacao.data).toLocaleString('pt-BR')}</td>
+                    <td>${transacao.descricao}</td>
+                    <td class="${transacao.tipo === 'entrada' ? 'positive' : 'negative'}">${Utils.formatarMoeda(transacao.valor)}</td>
+                    <td>${bancoMap.get(transacao.bancoId) || 'N/A'}</td>
+                    <td>${transacao.categoria || ''}</td>
+                    <td>${transacao.origemDestino || ''}</td>
+                `;
+                tabelaTransacoes.appendChild(tr);
+            });
+        }
+        
+        // Abre o modal para um novo banco
+        function abrirModalBanco() {
+            document.getElementById('formBanco').reset();
+            document.getElementById('bancoId').value = '';
+            document.getElementById('modalTitulo').textContent = 'Novo Banco';
+            document.getElementById('modalBanco').classList.add('active');
+        }
+        
+        // Fecha o modal do banco
+        function fecharModalBanco() {
+            document.getElementById('modalBanco').classList.remove('active');
+        }
+        
+        // Salva o banco (cria um novo ou atualiza um existente)
+        async function salvarBanco(event) {
+            event.preventDefault();
             
+            const bancoId = document.getElementById('bancoId').value;
+            const banco = {
+                nome: document.getElementById('nomeBanco').value,
+                agencia: document.getElementById('agencia').value,
+                conta: document.getElementById('conta').value,
+                tipoConta: document.getElementById('tipoConta').value,
+                saldo: parseFloat(document.getElementById('saldo').value)
+            };
+
+            if (bancoId) {
+                banco.id = bancoId;
+            }
+
+            try {
+                await db.save('bancos', banco);
+                fecharModalBanco();
+                await carregarBancos();
+                await carregarTransacoes();
+            } catch (error) {
+                console.error("Erro ao salvar banco:", error);
+                alert("Não foi possível salvar o banco. Verifique o console.");
+            }
+        }
+        
+        // Prepara o modal para editar um banco
+        async function editarBanco(id) {
+            const banco = await db.getById('bancos', id);
+            if (!banco) {
+                alert('Banco não encontrado!');
+                return;
+            }
+            
+            document.getElementById('bancoId').value = banco.id;
+            document.getElementById('nomeBanco').value = banco.nome;
+            document.getElementById('agencia').value = banco.agencia;
+            document.getElementById('conta').value = banco.conta;
+            document.getElementById('tipoConta').value = banco.tipoConta;
+            document.getElementById('saldo').value = banco.saldo;
+            
+            document.getElementById('modalTitulo').textContent = 'Editar Banco';
+            document.getElementById('modalBanco').classList.add('active');
+        }
+        
+        // Exclui um banco
+        async function excluirBanco(id) {
+            if (confirm('Tem certeza que deseja excluir este banco e todas as suas transações associadas?')) {
+                try {
+                    // O ideal seria ter uma transação para remover o banco e suas transações.
+                    // Por simplicidade, vamos apenas remover o banco por enquanto.
+                    await db.delete('bancos', id);
+                    await carregarBancos();
+                    await carregarTransacoes();
+                } catch (error) {
+                    console.error("Erro ao excluir banco:", error);
+                    alert("Não foi possível excluir o banco.");
+                }
+            }
+        }
+
+        function configurarFiltros() {
+            document.getElementById('filtroBanco').addEventListener('change', carregarTransacoes);
+            document.querySelectorAll('.filtro-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelector('.filtro-item.ativo').classList.remove('ativo');
+                    item.classList.add('ativo');
+                    carregarTransacoes();
+                });
+            });
+        }
+        
+        // Funções para o modal de transação (simplificado)
+        async function abrirModalTransacao() {
+            const selectBanco = document.getElementById('bancoTransacao');
+            selectBanco.innerHTML = '';
+            const bancos = await db.getAll('bancos');
             bancos.forEach(banco => {
                 const option = document.createElement('option');
                 option.value = banco.id;
                 option.textContent = banco.nome;
                 selectBanco.appendChild(option);
             });
-            
-            // Carregar transações após carregar bancos
-            carregarTransacoes();
+
+            document.getElementById('formTransacao').reset();
+            document.getElementById('dataTransacao').valueAsDate = new Date();
+            document.getElementById('modalTransacao').classList.add('active');
         }
-        
-        // Carrega bancos em um select
-        function carregarBancosSelect(selectId) {
-            const bancos = db.getAll('bancos');
-            const select = document.getElementById(selectId);
-            select.innerHTML = '';
-            
-            bancos.forEach(banco => {
-                const option = document.createElement('option');
-                option.value = banco.id;
-                option.textContent = banco.nome;
-                select.appendChild(option);
-            });
-        }
-        
-        // Carrega as transações na tabela
-        function carregarTransacoes(filtroTipo = 'todos', filtroBancoId = 'todos') {
-            const transacoes = db.getAll('transacoes') || [];
-            const bancos = db.getAll('bancos');
-            const tbody = document.getElementById('tabelaTransacoes');
-            tbody.innerHTML = '';
-            
-            // Filtrar transações
-            let transacoesFiltradas = transacoes;
-            
-            if (filtroTipo !== 'todos') {
-                transacoesFiltradas = transacoesFiltradas.filter(t => t.tipo === filtroTipo);
+
+        async function salvarTransacao(event) {
+            event.preventDefault();
+            const tipo = document.getElementById('tipoTransacao').value;
+            const valor = parseFloat(document.getElementById('valorTransacao').value);
+            const bancoId = document.getElementById('bancoTransacao').value;
+
+            const transacao = {
+                tipo: tipo,
+                descricao: document.getElementById('descricaoTransacao').value,
+                valor: valor,
+                data: new Date(
+                    document.getElementById('dataTransacao').value + 'T' + 
+                    document.getElementById('horaTransacao').value
+                ).toISOString(),
+                bancoId: bancoId,
+                categoria: document.getElementById('categoriaTransacao').value,
+                origemDestino: document.getElementById('origemDestinoTransacao').value,
+            };
+
+            const banco = await db.getById('bancos', bancoId);
+            if (!banco) {
+                alert('Banco não encontrado!');
+                return;
             }
-            
-            if (filtroBancoId !== 'todos') {
-                transacoesFiltradas = transacoesFiltradas.filter(t => t.bancoId === Number(filtroBancoId));
+
+            // Atualiza o saldo do banco
+            if (tipo === 'entrada') {
+                banco.saldo += valor;
+            } else {
+                banco.saldo -= valor;
             }
-            
-            // Ordenar por data (mais recente primeiro)
-            transacoesFiltradas.sort((a, b) => new Date(b.data) - new Date(a.data));
-            
-            transacoesFiltradas.forEach(transacao => {
-                const banco = bancos.find(b => b.id === transacao.bancoId);
-                const tr = document.createElement('tr');
-                tr.onclick = () => abrirDetalhesTransacao(transacao);
-                
-                const dataHora = new Date(transacao.data);
-                const dataFormatada = Utils.formatarData(dataHora);
-                const horaFormatada = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                
-                tr.innerHTML = `
-                    <td>
-                        <i class="fas ${transacao.tipo === 'entrada' ? 'fa-arrow-down icon-entrada' : 'fa-arrow-up icon-saida'}"></i>
-                        ${transacao.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-                    </td>
-                    <td>${dataFormatada} ${horaFormatada}</td>
-                    <td>${transacao.descricao}</td>
-                    <td class="${transacao.tipo === 'entrada' ? 'positive' : 'negative'}">
-                        ${Utils.formatarMoeda(transacao.valor)}
-                    </td>
-                    <td>${banco ? banco.nome : 'Banco não encontrado'}</td>
-                    <td>${transacao.categoria || 'Não categorizado'}</td>
-                    <td>${transacao.origem || '-'}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-            
-            // Mensagem se não houver transações
-            if (transacoesFiltradas.length === 0) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td colspan="7" class="text-center">Nenhuma transação encontrada</td>`;
-                tbody.appendChild(tr);
+
+            try {
+                await db.insert('transacoes', transacao);
+                await db.update('bancos', bancoId, banco);
+                fecharModal('modalTransacao');
+                await carregarBancos();
+                await carregarTransacoes();
+            } catch(error) {
+                console.error("Erro ao salvar transação:", error);
+                alert("Não foi possível salvar a transação.");
             }
         }
         
-        // Registra uma transação
-        function registrarTransacao(transacao) {
-            const transacoes = db.getAll('transacoes') || [];
-            
-            // Gerar ID único
-            transacao.id = Date.now();
-            
-            transacoes.push(transacao);
-            db.saveAll('transacoes', transacoes);
+        function fecharModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
         }
         
-        // Atualiza o saldo do banco
-        function atualizarSaldoBanco(bancoId, valor) {
-            const bancos = db.getAll('bancos');
-            const banco = bancos.find(b => b.id === bancoId);
-            
-            if (!banco) return;
-            
-            banco.saldo = parseFloat(banco.saldo) + valor;
-            db.save('bancos', banco);
+        async function abrirModalDetalhesTransacao(id) {
+            const transacao = await db.getById('transacoes', id);
+            const banco = await db.getById('bancos', transacao.bancoId);
+
+            // Preencher os detalhes no modal
+            document.getElementById('detalheTipo').textContent = transacao.tipo;
+            document.getElementById('detalheData').textContent = new Date(transacao.data).toLocaleString('pt-BR');
+            document.getElementById('detalheDescricao').textContent = transacao.descricao;
+            document.getElementById('detalheValor').textContent = Utils.formatarMoeda(transacao.valor);
+            document.getElementById('detalheBanco').textContent = banco ? banco.nome : 'N/A';
+            document.getElementById('detalheCategoria').textContent = transacao.categoria || 'N/A';
+            document.getElementById('detalheOrigemDestino').textContent = transacao.origemDestino || 'N/A';
+
+            document.getElementById('modalDetalhesTransacao').classList.add('active');
         }
-        
-        // Configurar filtros
-        document.addEventListener('DOMContentLoaded', function() {
-            // Filtros de tipo (entrada/saída)
-            const filtroItems = document.querySelectorAll('.filtro-item');
-            filtroItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    // Remover classe ativo de todos
-                    filtroItems.forEach(i => i.classList.remove('ativo'));
-                    // Adicionar classe ativo ao clicado
-                    this.classList.add('ativo');
-                    
-                    const filtroTipo = this.getAttribute('data-filtro');
-                    const filtroBancoId = document.getElementById('filtroBanco').value;
-                    carregarTransacoes(filtroTipo, filtroBancoId);
-                });
-            });
-            
-            // Filtro de banco
-            const filtroBanco = document.getElementById('filtroBanco');
-            filtroBanco.addEventListener('change', function() {
-                const filtroTipo = document.querySelector('.filtro-item.ativo').getAttribute('data-filtro');
-                carregarTransacoes(filtroTipo, this.value);
-            });
-            
-            // Inicialização
-            carregarBancos();
-        });
     </script>
 </body>
 </html> 

@@ -14,9 +14,9 @@
 <body>
     <header class="header">
         <nav class="nav container">
-            <a href="../index.html" class="nav-logo">
+            <div class="nav-logo">
                 <i class="fas fa-wallet"></i> Finnairaceora
-            </a>
+            </div>
             <ul class="nav-menu">
                 <li><a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Dashboard</a></li>
                 <li><a href="bancos.html" class="nav-link"><i class="fas fa-university"></i> Bancos</a></li>
@@ -24,6 +24,9 @@
                 <li><a href="gastos.html" class="nav-link"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
                 <li><a href="rendas.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
                 <li><a href="settings.html" class="nav-link active"><i class="fas fa-cog"></i> Configurações</a></li>
+                <li id="userInfo">
+                    <!-- O conteúdo será preenchido pelo script de autenticação -->
+                </li>
             </ul>
         </nav>
     </header>
@@ -107,52 +110,52 @@
                 <!-- As metas serão carregadas aqui -->
             </div>
             <div class="card-footer">
-                <button class="btn btn-secondary" onclick="adicionarMetaGasto()">
+                <button class="btn btn-secondary" onclick="adicionarMeta()">
                     <i class="fas fa-plus"></i> Nova Meta
                 </button>
-                <button class="btn btn-primary" onclick="salvarMetasGastos()">
+                <button class="btn btn-primary" onclick="salvarMetas()">
                     <i class="fas fa-save"></i> Salvar Metas
                 </button>
             </div>
         </div>
 
-        <!-- Seção de Gerenciamento de Categorias e Metas de Renda -->
+        <!-- Seção de Gerenciamento de Metas de Renda -->
         <div class="card mt-2">
             <div class="card-header">
-                <h2>Gerenciar Categorias e Metas de Renda</h2>
-                <button class="btn btn-primary" onclick="abrirModalCategoria('renda')">
-                    <i class="fas fa-plus"></i> Nova Categoria de Renda
-                </button>
+                <h2>Gerenciar Metas de Renda</h2>
             </div>
-            <div class="table-container" id="metasRendaContainer">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Categoria</th>
-                            <th>Meta (R$)</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaMetasRenda">
-                        <!-- Conteúdo gerado via JS -->
-                    </tbody>
-                </table>
+            <div class="card-body" id="metasRendaContainer">
+                <!-- As metas de renda serão carregadas aqui -->
             </div>
             <div class="card-footer">
+                <button class="btn btn-secondary" onclick="adicionarMetaRenda()">
+                    <i class="fas fa-plus"></i> Nova Meta de Renda
+                </button>
                 <button class="btn btn-primary" onclick="salvarMetasRenda()">
                     <i class="fas fa-save"></i> Salvar Metas de Renda
                 </button>
             </div>
         </div>
 
-        <!-- Seção de Gerenciamento de Categorias de Gastos -->
+        <!-- Seção de Gerenciamento de Categorias -->
         <div class="card mt-2">
             <div class="card-header">
-                <h2>Gerenciar Categorias de Gastos</h2>
-                <button class="btn btn-primary" onclick="abrirModalCategoria('gasto')">
-                    <i class="fas fa-plus"></i> Nova Categoria de Gasto
-                </button>
+                <h2>Gerenciar Categorias</h2>
+                <div>
+                    <button class="btn btn-secondary" onclick="reinicializarCategorias()">
+                        <i class="fas fa-sync"></i> Restaurar Padrões
+                    </button>
+                    <button class="btn btn-primary" onclick="abrirModalCategoria()">
+                        <i class="fas fa-plus"></i> Nova Categoria
+                    </button>
+                </div>
             </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="mudarTipo('gasto')">Categorias de Gastos</button>
+                <button class="tab-btn" onclick="mudarTipo('renda')">Categorias de Rendas</button>
+            </div>
+
             <div class="table-container">
                 <table class="table">
                     <thead>
@@ -163,7 +166,7 @@
                             <th>Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="tabelaCategoriasGastos"></tbody>
+                    <tbody id="tabelaCategorias"></tbody>
                 </table>
             </div>
         </div>
@@ -213,43 +216,29 @@
         <p>&copy; 2024 Finnairaceora - Controle Financeiro</p>
     </footer>
 
-    <script src="../assets/js/utils.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Nossa inicialização do Firebase -->
+    <script src="../assets/js/firebase-init.js"></script>
+    
+    <script src="../assets/js/auth.js"></script>
     <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/utils.js"></script>
     <script src="../assets/js/settings.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Garante que as tabelas de categorias existam no DB
-            if (!localStorage.getItem('categorias_gastos') || !localStorage.getItem('categorias_rendas')) {
-                db.reset(); // Função hipotética para popular dados iniciais
-            }
-
-            // Carrega todas as seções
-            carregarMetasGastos();
-            carregarMetasRenda();
-            carregarCategoriasGastos();
-
-            // Adiciona listener para preview do ícone no modal
-            const iconeInput = document.getElementById('iconeCategoria');
-            if (iconeInput) {
-                iconeInput.addEventListener('input', (e) => {
-                    const previewIcone = document.getElementById('previewIcone');
-                    if (previewIcone) {
-                        previewIcone.className = e.target.value;
-                    }
-                });
-            }
-        });
-
-        // --- LÓGICA PARA METAS DE GASTOS ---
-        function carregarMetasGastos() {
+        // Lógica de Metas
+        function carregarMetas() {
             const container = document.getElementById('metasContainer');
-            let metas = JSON.parse(localStorage.getItem('metas_gastos'));
-
-            if (!metas) {
-                metas = [
-                    { id: Date.now() + 1, nome: 'Gastos Pessoais', icone: 'fas fa-user', valor: 300.00 },
-                    { id: Date.now() + 2, nome: 'Gastos Casa', icone: 'fas fa-home', valor: 1500.00 }
-                ];
+            const metas = JSON.parse(localStorage.getItem('metas_gastos')) || [
+                { id: 1, nome: 'Gastos Pessoais', icone: 'fas fa-user', valor: 300.00 },
+                { id: 2, nome: 'Gastos Casa', icone: 'fas fa-home', valor: 1500.00 }
+            ];
+            
+            // Salva o padrão se não existir
+            if (!localStorage.getItem('metas_gastos')) {
                 localStorage.setItem('metas_gastos', JSON.stringify(metas));
             }
 
@@ -265,7 +254,7 @@
                     </div>
                     <div class="settings-control">
                         <input type="number" class="form-input" value="${meta.valor}" placeholder="Valor da Meta" step="0.01">
-                        <button class="btn btn-danger btn-small" onclick="removerMetaGasto(${meta.id})">
+                        <button class="btn btn-danger btn-small" onclick="removerMeta(${meta.id})">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -274,9 +263,9 @@
             });
         }
 
-        function adicionarMetaGasto() {
+        function adicionarMeta() {
             const container = document.getElementById('metasContainer');
-            const newId = Date.now();
+            const newId = Date.now(); // ID único simples
             const metaEl = document.createElement('div');
             metaEl.className = 'settings-item';
             metaEl.dataset.metaId = newId;
@@ -287,7 +276,7 @@
                 </div>
                 <div class="settings-control">
                     <input type="number" class="form-input" placeholder="Valor da Meta" step="0.01">
-                    <button class="btn btn-danger btn-small" onclick="removerMetaGasto(${newId})">
+                    <button class="btn btn-danger btn-small" onclick="removerMeta(${newId})">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -295,13 +284,14 @@
             container.appendChild(metaEl);
         }
 
-        function removerMetaGasto(id) {
+        function removerMeta(id) {
             if (confirm('Tem certeza que deseja remover esta meta?')) {
-                document.querySelector(`#metasContainer .settings-item[data-meta-id='${id}']`).remove();
+                document.querySelector(`[data-meta-id='${id}']`).remove();
+                // A remoção do localStorage acontece ao salvar.
             }
         }
 
-        function salvarMetasGastos() {
+        function salvarMetas() {
             const container = document.getElementById('metasContainer');
             const metaElements = container.querySelectorAll('.settings-item');
             const novasMetas = [];
@@ -317,110 +307,232 @@
             });
 
             localStorage.setItem('metas_gastos', JSON.stringify(novasMetas));
-            alert('Metas de gastos salvas com sucesso!');
+            alert('Metas salvas com sucesso!');
         }
 
-
-        // --- LÓGICA UNIFICADA PARA CATEGORIAS ---
-        function abrirModalCategoria(tipo, categoriaId = null) {
-            const modal = document.getElementById('modalCategoria');
-            const form = document.getElementById('formCategoria');
-            form.reset();
-            
-            document.getElementById('tipoCategoria').value = tipo;
-            document.getElementById('categoriaId').value = '';
-            
-            if (categoriaId) {
-                const entidade = `categorias_${tipo}`;
-                const categorias = db.getAll(entidade);
-                const categoria = categorias.find(c => c.id === categoriaId);
-
-                if (categoria) {
-                    document.getElementById('categoriaId').value = categoria.id;
-                    document.getElementById('nomeCategoria').value = categoria.nome;
-                    document.getElementById('iconeCategoria').value = categoria.icone;
-                    document.getElementById('corCategoria').value = categoria.cor;
-                    document.getElementById('previewIcone').className = categoria.icone || 'fas fa-tag';
-                }
-            } else {
-                document.getElementById('previewIcone').className = 'fas fa-tag';
+        // Lógica de Metas de Renda
+        function carregarMetasRenda() {
+            const container = document.getElementById('metasRendaContainer');
+            const metas = JSON.parse(localStorage.getItem('metas_renda')) || [
+                { id: 1, nome: 'Renda Principal', icone: 'fas fa-briefcase', valor: 3000.00 },
+                { id: 2, nome: 'Renda Extra', icone: 'fas fa-coins', valor: 1000.00 }
+            ];
+            // Salva o padrão se não existir
+            if (!localStorage.getItem('metas_renda')) {
+                localStorage.setItem('metas_renda', JSON.stringify(metas));
             }
+            container.innerHTML = '';
+            metas.forEach(meta => {
+                const metaEl = document.createElement('div');
+                metaEl.className = 'settings-item';
+                metaEl.dataset.metaId = meta.id;
+                metaEl.innerHTML = `
+                    <div class="settings-label">
+                        <input type="text" class="form-input" value="${meta.icone}" placeholder="Ícone Font Awesome">
+                        <input type="text" class="form-input" value="${meta.nome}" placeholder="Nome da Meta de Renda">
+                    </div>
+                    <div class="settings-control">
+                        <input type="number" class="form-input" value="${meta.valor}" placeholder="Valor da Meta" step="0.01">
+                        <button class="btn btn-danger btn-small" onclick="removerMetaRenda(${meta.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(metaEl);
+            });
+        }
+
+        function adicionarMetaRenda() {
+            const container = document.getElementById('metasRendaContainer');
+            const newId = Date.now();
+            const metaEl = document.createElement('div');
+            metaEl.className = 'settings-item';
+            metaEl.dataset.metaId = newId;
+            metaEl.innerHTML = `
+                <div class="settings-label">
+                    <input type="text" class="form-input" placeholder="Ícone Font Awesome" value="fas fa-star">
+                    <input type="text" class="form-input" placeholder="Nome da Meta de Renda">
+                </div>
+                <div class="settings-control">
+                    <input type="number" class="form-input" placeholder="Valor da Meta" step="0.01">
+                    <button class="btn btn-danger btn-small" onclick="removerMetaRenda(${newId})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(metaEl);
+        }
+
+        function removerMetaRenda(id) {
+            if (confirm('Tem certeza que deseja remover esta meta de renda?')) {
+                document.querySelector(`#metasRendaContainer [data-meta-id='${id}']`).remove();
+            }
+        }
+
+        function salvarMetasRenda() {
+            const container = document.getElementById('metasRendaContainer');
+            const metaElements = container.querySelectorAll('.settings-item');
+            const novasMetas = [];
+            metaElements.forEach(el => {
+                const id = Number(el.dataset.metaId);
+                const icone = el.querySelector('.settings-label input:first-child').value;
+                const nome = el.querySelector('.settings-label input:last-child').value;
+                const valor = parseFloat(el.querySelector('.settings-control input').value);
+                if (nome && valor) {
+                    novasMetas.push({ id, icone, nome, valor });
+                }
+            });
+            localStorage.setItem('metas_renda', JSON.stringify(novasMetas));
+            alert('Metas de renda salvas com sucesso!');
+        }
+
+        // Lógica de Categorias
+        let tipoAtual = 'gasto';
+
+        function setupCategoryListeners() {
+            // Garante que as tabelas de categorias existam
+            if (!localStorage.getItem('categorias_gastos') || !localStorage.getItem('categorias_rendas')) {
+                // Verificar se a função reset existe antes de chamá-la
+                if (typeof db.reset === 'function') {
+                    db.reset();
+                } else {
+                    console.warn("Função db.reset não encontrada. Inicializando categorias padrão manualmente.");
+                    // Categorias padrão de gastos
+                    const categoriasGastos = [
+                        { id: 1, nome: 'Alimentação', icone: 'fas fa-utensils', cor: '#E74C3C' },
+                        { id: 2, nome: 'Moradia', icone: 'fas fa-home', cor: '#3498DB' },
+                        { id: 3, nome: 'Transporte', icone: 'fas fa-car', cor: '#2ECC71' },
+                        { id: 4, nome: 'Saúde', icone: 'fas fa-heartbeat', cor: '#9B59B6' },
+                        { id: 5, nome: 'Educação', icone: 'fas fa-graduation-cap', cor: '#F1C40F' },
+                        { id: 6, nome: 'Lazer', icone: 'fas fa-glass-cheers', cor: '#E67E22' },
+                        { id: 7, nome: 'Pessoal', icone: 'fas fa-user', cor: '#1ABC9C' },
+                        { id: 8, nome: 'Outros', icone: 'fas fa-ellipsis-h', cor: '#95A5A6' }
+                    ];
+                    
+                    // Categorias padrão de rendas
+                    const categoriasRendas = [
+                        { id: 1, nome: 'Salário', icone: 'fas fa-money-bill-wave', cor: '#2ECC71' },
+                        { id: 2, nome: 'Freelance', icone: 'fas fa-laptop', cor: '#3498DB' },
+                        { id: 3, nome: 'Investimentos', icone: 'fas fa-chart-line', cor: '#F1C40F' },
+                        { id: 4, nome: 'Aluguel', icone: 'fas fa-building', cor: '#9B59B6' },
+                        { id: 5, nome: 'Outros', icone: 'fas fa-ellipsis-h', cor: '#95A5A6' }
+                    ];
+                    
+                    localStorage.setItem('categorias_gastos', JSON.stringify(categoriasGastos));
+                    localStorage.setItem('categorias_rendas', JSON.stringify(categoriasRendas));
+                }
+            }
+
+            carregarCategorias();
+
+            // Preview do ícone ao digitar
+            document.getElementById('iconeCategoria').addEventListener('input', (e) => {
+                const icone = document.getElementById('previewIcone');
+                icone.className = e.target.value;
+            });
+        }
+
+        // Reinicializa as categorias com os valores padrão
+        function reinicializarCategorias() {
+            if (confirm('Tem certeza que deseja restaurar as categorias padrão? Todas as categorias personalizadas serão perdidas.')) {
+                // Verificar se a função reset existe antes de chamá-la
+                if (typeof db.reset === 'function') {
+                    db.reset();
+                } else {
+                    console.warn("Função db.reset não encontrada. Inicializando categorias padrão manualmente.");
+                    // Categorias padrão de gastos
+                    const categoriasGastos = [
+                        { id: 1, nome: 'Alimentação', icone: 'fas fa-utensils', cor: '#E74C3C' },
+                        { id: 2, nome: 'Moradia', icone: 'fas fa-home', cor: '#3498DB' },
+                        { id: 3, nome: 'Transporte', icone: 'fas fa-car', cor: '#2ECC71' },
+                        { id: 4, nome: 'Saúde', icone: 'fas fa-heartbeat', cor: '#9B59B6' },
+                        { id: 5, nome: 'Educação', icone: 'fas fa-graduation-cap', cor: '#F1C40F' },
+                        { id: 6, nome: 'Lazer', icone: 'fas fa-glass-cheers', cor: '#E67E22' },
+                        { id: 7, nome: 'Pessoal', icone: 'fas fa-user', cor: '#1ABC9C' },
+                        { id: 8, nome: 'Outros', icone: 'fas fa-ellipsis-h', cor: '#95A5A6' }
+                    ];
+                    
+                    // Categorias padrão de rendas
+                    const categoriasRendas = [
+                        { id: 1, nome: 'Salário', icone: 'fas fa-money-bill-wave', cor: '#2ECC71' },
+                        { id: 2, nome: 'Freelance', icone: 'fas fa-laptop', cor: '#3498DB' },
+                        { id: 3, nome: 'Investimentos', icone: 'fas fa-chart-line', cor: '#F1C40F' },
+                        { id: 4, nome: 'Aluguel', icone: 'fas fa-building', cor: '#9B59B6' },
+                        { id: 5, nome: 'Outros', icone: 'fas fa-ellipsis-h', cor: '#95A5A6' }
+                    ];
+                    
+                    localStorage.setItem('categorias_gastos', JSON.stringify(categoriasGastos));
+                    localStorage.setItem('categorias_rendas', JSON.stringify(categoriasRendas));
+                }
+                carregarCategorias();
+                Utils.mostrarMensagem('Categorias restauradas com sucesso!', 'sucesso');
+            }
+        }
+
+        // Muda o tipo de categoria (gasto/renda)
+        function mudarTipo(tipo) {
+            tipoAtual = tipo;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            carregarCategorias();
+        }
+
+        // Carrega as categorias na tabela
+        function carregarCategorias() {
+            const entidade = tipoAtual === 'gasto' ? 'categorias_gastos' : 'categorias_rendas';
             
-            modal.classList.add('active');
-            modal.style.display = 'flex';
-        }
-
-        function fecharModalCategoria() {
-            const modal = document.getElementById('modalCategoria');
-            modal.classList.remove('active');
-            modal.style.display = 'none';
-        }
-
-        function salvarCategoria(event) {
-            event.preventDefault();
-            const tipo = document.getElementById('tipoCategoria').value;
-            const entidade = `categorias_${tipo}s`; // Adiciona 's' no final para corresponder ao nome da tabela
-            const categoriaId = document.getElementById('categoriaId').value;
-            const categoriaData = {
-                nome: document.getElementById('nomeCategoria').value,
-                icone: document.getElementById('iconeCategoria').value,
-                cor: document.getElementById('corCategoria').value,
-            };
-
-            console.log('Salvando categoria:', { tipo, entidade, categoriaId, categoriaData });
-
+            // Tentar obter categorias do localStorage primeiro
+            let categorias = [];
             try {
-                let resultado;
-                if (categoriaId) {
-                    resultado = db.update(entidade, Number(categoriaId), categoriaData);
-                    console.log('Categoria atualizada:', resultado);
-                } else {
-                    resultado = db.insert(entidade, categoriaData);
-                    console.log('Categoria inserida:', resultado);
+                const categoriasLocalStorage = localStorage.getItem(entidade);
+                if (categoriasLocalStorage) {
+                    categorias = JSON.parse(categoriasLocalStorage);
                 }
-
-                // Verifica se a categoria foi salva corretamente
-                const categorias = db.getAll(entidade);
-                console.log('Categorias após salvar:', categorias);
-
-                if (tipo === 'gasto') {
-                    carregarCategoriasGastos();
-                } else {
-                    carregarMetasRenda();
-                }
-
-                fecharModalCategoria();
-                Utils.mostrarMensagem('Categoria salva com sucesso!', 'sucesso');
             } catch (error) {
-                console.error('Erro ao salvar categoria:', error);
-                Utils.mostrarMensagem('Erro ao salvar categoria. Verifique o console.', 'erro');
+                console.error("Erro ao obter categorias do localStorage:", error);
             }
-        }
-
-        function excluirCategoria(tipo, id) {
-            if (confirm('Tem certeza? A exclusão pode afetar registros existentes.')) {
-                db.delete(`categorias_${tipo}`, Number(id));
-                if (tipo === 'gasto') {
-                    carregarCategoriasGastos();
-                } else {
-                    carregarMetasRenda();
+            
+            // Se não houver categorias no localStorage, tentar do banco de dados
+            if (!categorias || categorias.length === 0) {
+                try {
+                    const categoriasDB = db.getAll(entidade);
+                    // Verificar se o resultado é um array
+                    if (Array.isArray(categoriasDB)) {
+                        categorias = categoriasDB;
+                    } else if (categoriasDB && typeof categoriasDB.then === 'function') {
+                        // Se for uma Promise, estamos usando Firestore assíncrono
+                        categoriasDB.then(result => {
+                            if (Array.isArray(result) && result.length > 0) {
+                                renderizarCategorias(result);
+                            } else {
+                                renderizarCategoriasVazio();
+                            }
+                        }).catch(error => {
+                            console.error("Erro ao obter categorias do Firestore:", error);
+                            renderizarCategoriasVazio();
+                        });
+                        return; // Retorna aqui pois o processamento continuará na Promise
+                    }
+                } catch (error) {
+                    console.error("Erro ao obter categorias do banco de dados:", error);
                 }
-                Utils.mostrarMensagem('Categoria excluída com sucesso!', 'sucesso');
+            }
+            
+            // Renderizar as categorias obtidas
+            if (Array.isArray(categorias) && categorias.length > 0) {
+                renderizarCategorias(categorias);
+            } else {
+                renderizarCategoriasVazio();
             }
         }
-
-
-        // --- LÓGICA PARA CATEGORIAS DE GASTOS ---
-        function carregarCategoriasGastos() {
-            const tbody = document.getElementById('tabelaCategoriasGastos');
-            const categorias = db.getAll('categorias_gastos') || [];
+        
+        // Função auxiliar para renderizar categorias
+        function renderizarCategorias(categorias) {
+            const tbody = document.getElementById('tabelaCategorias');
             tbody.innerHTML = '';
             
-            if (categorias.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center">Nenhuma categoria de gasto cadastrada.</td></tr>`;
-                return;
-            }
-
             categorias.forEach(categoria => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -431,49 +543,10 @@
                         ${categoria.cor}
                     </td>
                     <td>
-                        <button class="btn btn-small btn-secondary" onclick="abrirModalCategoria('gasto', ${categoria.id})"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-small btn-danger" onclick="excluirCategoria('gasto', ${categoria.id})"><i class="fas fa-trash"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // --- LÓGICA PARA METAS DE RENDA ---
-        function carregarMetasRenda() {
-            const categoriasRenda = db.getAll('categorias_rendas') || [];
-            console.log('Categorias de renda carregadas:', categoriasRenda);
-
-            const metasRenda = JSON.parse(localStorage.getItem('metas_rendas')) || {};
-            console.log('Metas de renda carregadas:', metasRenda);
-
-            const tbody = document.getElementById('tabelaMetasRenda');
-            tbody.innerHTML = '';
-
-            if (categoriasRenda.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma categoria de renda encontrada. Adicione uma nova categoria para começar.</td></tr>';
-                return;
-            }
-
-            categoriasRenda.forEach(categoria => {
-                const valorMeta = metasRenda[categoria.id] || 0;
-                console.log(`Categoria: ${categoria.nome}, Meta: ${valorMeta}`);
-                
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>
-                        <i class="${categoria.icone}" style="color: ${categoria.cor};"></i>
-                        ${categoria.nome}
-                    </td>
-                    <td>
-                        <input type="number" class="form-control" value="${valorMeta}" 
-                               data-categoria-id="${categoria.id}" onchange="salvarMetaRenda(this)">
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary me-2" onclick="abrirModalCategoria('renda', ${categoria.id})">
+                        <button class="btn btn-small btn-secondary" onclick="editarCategoria(${categoria.id})">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="excluirCategoria('renda', ${categoria.id})">
+                        <button class="btn btn-small btn-danger" onclick="excluirCategoria(${categoria.id})">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
@@ -481,39 +554,341 @@
                 tbody.appendChild(tr);
             });
         }
-
-        function salvarMetasRenda() {
-            const tbody = document.getElementById('tabelaMetasRenda');
-            const inputs = tbody.querySelectorAll('input[data-categoria-id]');
-            const novasMetas = {};
-
-            inputs.forEach(input => {
-                const categoriaId = input.dataset.categoriaId;
-                const valor = parseFloat(input.value);
-                if (valor >= 0) { // Permite meta 0
-                    novasMetas[categoriaId] = valor;
-                }
-            });
-
-            localStorage.setItem('metas_rendas', JSON.stringify(novasMetas));
-            alert('Metas de renda salvas com sucesso!');
+        
+        // Função auxiliar para renderizar mensagem de nenhuma categoria
+        function renderizarCategoriasVazio() {
+            const tbody = document.getElementById('tabelaCategorias');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center">Nenhuma categoria cadastrada.</td>
+                </tr>
+            `;
         }
 
-        function salvarMetaRenda(input) {
-            const categoriaId = input.dataset.categoriaId;
-            const valor = parseFloat(input.value);
+        // Abre o modal de categoria
+        function abrirModalCategoria(categoriaId = null) {
+            const modal = document.getElementById('modalCategoria');
+            const titulo = document.getElementById('modalTituloCategoria');
+            const form = document.getElementById('formCategoria');
             
-            // Recupera as metas existentes
-            const metasRenda = JSON.parse(localStorage.getItem('metas_rendas')) || {};
+            const entidade = tipoAtual === 'gasto' ? 'categorias_gastos' : 'categorias_rendas';
             
-            // Atualiza a meta para a categoria específica
-            if (valor >= 0) {
-                metasRenda[categoriaId] = valor;
-                localStorage.setItem('metas_rendas', JSON.stringify(metasRenda));
-                Utils.mostrarMensagem('Meta de renda atualizada com sucesso!', 'sucesso');
+            // Se não temos um ID para editar, apenas abrir o modal para nova categoria
+            if (!categoriaId) {
+                titulo.textContent = 'Nova Categoria';
+                form.reset();
+                document.getElementById('categoriaId').value = '';
+                document.getElementById('tipoCategoria').value = tipoAtual;
+                document.getElementById('previewIcone').className = 'fas fa-tag';
+                
+                modal.classList.add('active');
+                modal.style.display = 'flex';
+                return;
+            }
+            
+            // Tentar obter categorias do localStorage primeiro
+            try {
+                const categoriasLocalStorage = localStorage.getItem(entidade);
+                if (categoriasLocalStorage) {
+                    const categorias = JSON.parse(categoriasLocalStorage);
+                    const categoria = categorias.find(c => c.id === Number(categoriaId));
+                    
+                    if (categoria) {
+                        preencherFormularioCategoria(categoria);
+                        modal.classList.add('active');
+                        modal.style.display = 'flex';
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error("Erro ao obter categorias do localStorage:", error);
+            }
+            
+            // Se não encontrou no localStorage, tentar do banco de dados
+            try {
+                const categoriasPromise = db.getAll(entidade);
+                
+                if (categoriasPromise && typeof categoriasPromise.then === 'function') {
+                    // É uma Promise
+                    categoriasPromise.then(categorias => {
+                        if (Array.isArray(categorias)) {
+                            const categoria = categorias.find(c => c.id === Number(categoriaId));
+                            if (categoria) {
+                                preencherFormularioCategoria(categoria);
+                            } else {
+                                prepararNovaCategoria();
+                            }
+                        } else {
+                            prepararNovaCategoria();
+                        }
+                        modal.classList.add('active');
+                        modal.style.display = 'flex';
+                    }).catch(error => {
+                        console.error("Erro ao obter categorias do Firestore:", error);
+                        prepararNovaCategoria();
+                        modal.classList.add('active');
+                        modal.style.display = 'flex';
+                    });
+                } else {
+                    // Não é uma Promise, é um array direto
+                    const categorias = categoriasPromise;
+                    if (Array.isArray(categorias)) {
+                        const categoria = categorias.find(c => c.id === Number(categoriaId));
+                        if (categoria) {
+                            preencherFormularioCategoria(categoria);
+                        } else {
+                            prepararNovaCategoria();
+                        }
+                    } else {
+                        prepararNovaCategoria();
+                    }
+                    modal.classList.add('active');
+                    modal.style.display = 'flex';
+                }
+            } catch (error) {
+                console.error("Erro ao obter categorias do banco de dados:", error);
+                prepararNovaCategoria();
+                modal.classList.add('active');
+                modal.style.display = 'flex';
+            }
+                }
+        
+        // Função auxiliar para preencher o formulário de categoria
+        function preencherFormularioCategoria(categoria) {
+            const titulo = document.getElementById('modalTituloCategoria');
+            titulo.textContent = 'Editar Categoria';
+            document.getElementById('categoriaId').value = categoria.id;
+            document.getElementById('nomeCategoria').value = categoria.nome;
+            document.getElementById('iconeCategoria').value = categoria.icone;
+            document.getElementById('corCategoria').value = categoria.cor;
+            document.getElementById('previewIcone').className = categoria.icone;
+        }
+        
+        // Função auxiliar para preparar o formulário para nova categoria
+        function prepararNovaCategoria() {
+            const titulo = document.getElementById('modalTituloCategoria');
+            const form = document.getElementById('formCategoria');
+            titulo.textContent = 'Nova Categoria';
+            form.reset();
+            document.getElementById('categoriaId').value = '';
+            document.getElementById('tipoCategoria').value = tipoAtual;
+            document.getElementById('previewIcone').className = 'fas fa-tag';
+        }
+
+        // Fecha o modal de categoria
+        function fecharModalCategoria() {
+            const modal = document.getElementById('modalCategoria');
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+
+        // Salva uma categoria
+        function salvarCategoria(event) {
+            event.preventDefault();
+            
+            const entidade = tipoAtual === 'gasto' ? 'categorias_gastos' : 'categorias_rendas';
+            const categoriaId = document.getElementById('categoriaId').value;
+            
+            const categoriaData = {
+                nome: document.getElementById('nomeCategoria').value,
+                icone: document.getElementById('iconeCategoria').value,
+                cor: document.getElementById('corCategoria').value
+            };
+            
+            // Mostrar indicador de carregamento
+            const btnSalvar = event.submitter;
+            const textoOriginal = btnSalvar.innerHTML;
+            btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+            btnSalvar.disabled = true;
+            
+            let operacaoPromise;
+            
+            if (categoriaId) {
+                operacaoPromise = db.update(entidade, Number(categoriaId), categoriaData);
+            } else {
+                operacaoPromise = db.insert(entidade, categoriaData);
+            }
+            
+            // Verificar se é uma Promise
+            if (operacaoPromise && typeof operacaoPromise.then === 'function') {
+                // É uma Promise
+                operacaoPromise.then(resultado => {
+                    if (resultado) {
+                        // Atualizar categorias no localStorage também
+                        atualizarCategoriasLocalStorage(entidade, resultado);
+                        carregarCategorias();
+                        fecharModalCategoria();
+                        Utils.mostrarMensagem('Categoria salva com sucesso!', 'sucesso');
+                    } else {
+                        Utils.mostrarMensagem('Erro ao salvar categoria.', 'erro');
+                        // Restaurar botão
+                        btnSalvar.innerHTML = textoOriginal;
+                        btnSalvar.disabled = false;
+                    }
+                }).catch(error => {
+                    console.error("Erro ao salvar categoria:", error);
+                    Utils.mostrarMensagem('Erro ao salvar categoria.', 'erro');
+                    // Restaurar botão
+                    btnSalvar.innerHTML = textoOriginal;
+                    btnSalvar.disabled = false;
+                });
+            } else {
+                // Não é uma Promise, é um resultado direto
+                if (operacaoPromise) {
+                    // Atualizar categorias no localStorage também
+                    atualizarCategoriasLocalStorage(entidade, operacaoPromise);
+                    carregarCategorias();
+                    fecharModalCategoria();
+                    Utils.mostrarMensagem('Categoria salva com sucesso!', 'sucesso');
+                } else {
+                    Utils.mostrarMensagem('Erro ao salvar categoria.', 'erro');
+                    // Restaurar botão
+                    btnSalvar.innerHTML = textoOriginal;
+                    btnSalvar.disabled = false;
+                }
+            }
+        }
+        
+        // Função auxiliar para atualizar categorias no localStorage após salvar
+        function atualizarCategoriasLocalStorage(entidade, novaCategoria) {
+            try {
+                const categoriasLocalStorage = localStorage.getItem(entidade);
+                let categorias = [];
+                
+                if (categoriasLocalStorage) {
+                    categorias = JSON.parse(categoriasLocalStorage);
+                }
+                
+                // Verificar se já existe uma categoria com este ID
+                const index = categorias.findIndex(c => c.id === novaCategoria.id);
+                
+                if (index !== -1) {
+                    // Atualizar categoria existente
+                    categorias[index] = novaCategoria;
+                } else {
+                    // Adicionar nova categoria
+                    categorias.push(novaCategoria);
+                }
+                
+                localStorage.setItem(entidade, JSON.stringify(categorias));
+            } catch (error) {
+                console.error("Erro ao atualizar categorias no localStorage:", error);
             }
         }
 
+        // Edita uma categoria
+        function editarCategoria(id) {
+            abrirModalCategoria(id);
+        }
+
+        // Exclui uma categoria
+        function excluirCategoria(id) {
+            const entidade = tipoAtual === 'gasto' ? 'categorias_gastos' : 'categorias_rendas';
+            const entidadeRelacionada = tipoAtual === 'gasto' ? 'gastos' : 'rendas';
+            
+            // Verificar se a categoria está sendo usada antes de excluir
+            verificarCategoriaEmUso(entidadeRelacionada, id).then(emUso => {
+                if (emUso) {
+                    Utils.mostrarMensagem('Esta categoria não pode ser excluída pois está sendo usada.', 'erro');
+                    return;
+                }
+                
+                if (confirm('Tem certeza que deseja excluir esta categoria?')) {
+                    // Excluir a categoria
+                    const deletePromise = db.delete(entidade, Number(id));
+                    
+                    if (deletePromise && typeof deletePromise.then === 'function') {
+                        // É uma Promise
+                        deletePromise.then(success => {
+                            if (success) {
+                                // Atualizar categorias no localStorage também
+                                atualizarCategoriaLocalStorage(entidade, id);
+                                carregarCategorias();
+                                Utils.mostrarMensagem('Categoria excluída com sucesso!', 'sucesso');
+                            } else {
+                                Utils.mostrarMensagem('Erro ao excluir categoria.', 'erro');
+                            }
+                        }).catch(error => {
+                            console.error("Erro ao excluir categoria:", error);
+                            Utils.mostrarMensagem('Erro ao excluir categoria.', 'erro');
+                        });
+                    } else {
+                        // Não é uma Promise, é um resultado direto
+                        if (deletePromise) {
+                            // Atualizar categorias no localStorage também
+                            atualizarCategoriaLocalStorage(entidade, id);
+                            carregarCategorias();
+                            Utils.mostrarMensagem('Categoria excluída com sucesso!', 'sucesso');
+                        } else {
+                            Utils.mostrarMensagem('Erro ao excluir categoria.', 'erro');
+                        }
+                    }
+                }
+            }).catch(error => {
+                console.error("Erro ao verificar se categoria está em uso:", error);
+                Utils.mostrarMensagem('Erro ao verificar se a categoria está em uso.', 'erro');
+            });
+        }
+        
+        // Função auxiliar para verificar se uma categoria está em uso
+        async function verificarCategoriaEmUso(entidadeRelacionada, categoriaId) {
+            try {
+                // Tentar obter itens fixos
+                const itemsFixosPromise = db.getAll(entidadeRelacionada + '_fixos');
+                let itemsFixos = [];
+                
+                if (itemsFixosPromise && typeof itemsFixosPromise.then === 'function') {
+                    // É uma Promise
+                    itemsFixos = await itemsFixosPromise;
+                } else {
+                    // Não é uma Promise, é um array direto
+                    itemsFixos = itemsFixosPromise || [];
+                }
+                
+                // Tentar obter itens variáveis
+                const itemsVariaveisPromise = db.getAll(entidadeRelacionada + '_variaveis');
+                let itemsVariaveis = [];
+                
+                if (itemsVariaveisPromise && typeof itemsVariaveisPromise.then === 'function') {
+                    // É uma Promise
+                    itemsVariaveis = await itemsVariaveisPromise;
+                } else {
+                    // Não é uma Promise, é um array direto
+                    itemsVariaveis = itemsVariaveisPromise || [];
+                }
+                
+                // Garantir que são arrays
+                const fixosArray = Array.isArray(itemsFixos) ? itemsFixos : [];
+                const variaveisArray = Array.isArray(itemsVariaveis) ? itemsVariaveis : [];
+                
+                // Verificar se a categoria está em uso
+                return [...fixosArray, ...variaveisArray].some(item => item && item.categoriaId === categoriaId);
+            } catch (error) {
+                console.error("Erro ao verificar se categoria está em uso:", error);
+                return false; // Em caso de erro, permitir a exclusão
+            }
+        }
+        
+        // Função auxiliar para atualizar categorias no localStorage após exclusão
+        function atualizarCategoriaLocalStorage(entidade, id) {
+            try {
+                const categoriasLocalStorage = localStorage.getItem(entidade);
+                if (categoriasLocalStorage) {
+                    const categorias = JSON.parse(categoriasLocalStorage);
+                    const categoriasAtualizadas = categorias.filter(c => c.id !== Number(id));
+                    localStorage.setItem(entidade, JSON.stringify(categoriasAtualizadas));
+                }
+            } catch (error) {
+                console.error("Erro ao atualizar categorias no localStorage:", error);
+            }
+        }
+
+        // Adiciona o listener quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', () => {
+            setupCategoryListeners();
+            carregarMetas();
+            carregarMetasRenda();
+        });
     </script>
 </body>
 

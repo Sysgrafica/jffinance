@@ -28,6 +28,9 @@
                 <li><a href="gastos.html" class="nav-link active"><i class="fas fa-money-bill-wave"></i> Gastos</a></li>
                 <li><a href="rendas.html" class="nav-link"><i class="fas fa-hand-holding-usd"></i> Rendas</a></li>
                 <li><a href="settings.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+                <li id="userInfo">
+                    <!-- O conteúdo será preenchido pelo script de autenticação -->
+                </li>
             </ul>
         </nav>
     </header>
@@ -389,7 +392,18 @@
 
     <!-- Carregar scripts sem usar módulos ES6 -->
     <script src="../assets/js/utils.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Nossa inicialização do Firebase -->
+    <script src="../assets/js/firebase-init.js"></script>
+    
+    <script src="../assets/js/auth.js"></script>
     <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/main.js"></script>
     <script src="../assets/js/gastos.js"></script>
 </body>
 </html> 

@@ -46,118 +46,122 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Carrega as categorias no select
-function carregarCategorias() {
-    const categorias = db.getAll('categorias_gastos');
+async function carregarCategorias() {
+    const categorias = await db.getAll('categorias_gastos');
     const selectCategoria = document.getElementById('categoriaGasto');
     
     selectCategoria.innerHTML = '<option value="">Selecione uma categoria</option>';
-    categorias.forEach(categoria => {
-        selectCategoria.innerHTML += `<option value="${categoria.id}">${categoria.nome}</option>`;
-    });
+    if (Array.isArray(categorias)) {
+        categorias.forEach(categoria => {
+            selectCategoria.innerHTML += `<option value="${categoria.id}">${categoria.nome}</option>`;
+        });
+    }
 }
 
 // Carrega os gastos nas tabelas
-function carregarGastos() {
-    carregarGastosFixos();
-    carregarGastosVariaveis();
-    carregarListaGastos();
+async function carregarGastos() {
+    await carregarGastosFixos();
+    await carregarGastosVariaveis();
+    await carregarListaGastos();
 }
 
 // Carrega os gastos fixos
-function carregarGastosFixos() {
-    const gastosFixos = db.getAll('gastos_fixos');
+async function carregarGastosFixos() {
+    const gastosFixos = await db.getAll('gastos_fixos');
+    const categorias = await db.getAll('categorias_gastos');
     const tbody = document.getElementById('tabelaGastosFixos');
     tbody.innerHTML = '';
 
-    gastosFixos.forEach(gasto => {
-        const categorias = db.getAll('categorias_gastos');
-        const categoria = categorias.find(c => c.id === Number(gasto.categoriaId));
-        
-        const hoje = new Date();
-        const diaAtual = hoje.getDate();
-        const status = diaAtual > gasto.vencimento ? 'atrasado' : 'em-dia';
-        const pago = gasto.pago ? true : false;
+    if (Array.isArray(gastosFixos)) {
+        gastosFixos.forEach(gasto => {
+            const categoria = Array.isArray(categorias) ? categorias.find(c => c.id === Number(gasto.categoriaId)) : null;
+            const hoje = new Date();
+            const diaAtual = hoje.getDate();
+            const status = diaAtual > gasto.vencimento ? 'atrasado' : 'em-dia';
+            const pago = gasto.pago ? true : false;
 
-        tbody.innerHTML += `
-            <tr>
-                <td>${gasto.descricao}</td>
-                <td>${categoria ? categoria.nome : 'N/A'}</td>
-                <td>${Utils.formatarMoeda(gasto.valor)}</td>
-                <td>Dia ${gasto.vencimento}</td>
-                <td>
-                    ${pago ? 
-                        `<span class="status pago">Pago</span>` : 
-                        `<span class="status ${status}">${status === 'atrasado' ? 'Atrasado' : 'Em dia'}</span>`
-                    }
-                </td>
-                <td>
-                    <div class="acoes">
-                        ${!pago ? `
-                            <button class="btn btn-success" onclick="abrirModalPagamento('fixo', ${gasto.id})">
-                                <i class="fas fa-check-circle"></i>
+            tbody.innerHTML += `
+                <tr>
+                    <td>${gasto.descricao}</td>
+                    <td>${categoria ? categoria.nome : 'N/A'}</td>
+                    <td>${Utils.formatarMoeda(gasto.valor)}</td>
+                    <td>Dia ${gasto.vencimento}</td>
+                    <td>
+                        ${pago ? 
+                            `<span class="status pago">Pago</span>` : 
+                            `<span class="status ${status}">${status === 'atrasado' ? 'Atrasado' : 'Em dia'}</span>`
+                        }
+                    </td>
+                    <td>
+                        <div class="acoes">
+                            ${!pago ? `
+                                <button class="btn btn-success" onclick="abrirModalPagamento('fixo', ${gasto.id})">
+                                    <i class="fas fa-check-circle"></i>
+                                </button>
+                            ` : `
+                                <button class="btn btn-info" onclick="verDetalhesPagamento('fixo', ${gasto.id})">
+                                    <i class="fas fa-receipt"></i>
+                                </button>
+                            `}
+                            <button class="btn btn-editar" onclick="editarGasto('fixo', ${gasto.id})">
+                                <i class="fas fa-edit"></i>
                             </button>
-                        ` : `
-                            <button class="btn btn-info" onclick="verDetalhesPagamento('fixo', ${gasto.id})">
-                                <i class="fas fa-receipt"></i>
+                            <button class="btn btn-perigo" onclick="excluirGasto('fixo', ${gasto.id})">
+                                <i class="fas fa-trash"></i>
                             </button>
-                        `}
-                        <button class="btn btn-editar" onclick="editarGasto('fixo', ${gasto.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-perigo" onclick="excluirGasto('fixo', ${gasto.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+    }
 }
 
 // Carrega os gastos variáveis
-function carregarGastosVariaveis() {
-    const gastosVariaveis = db.getAll('gastos_variaveis');
+async function carregarGastosVariaveis() {
+    const gastosVariaveis = await db.getAll('gastos_variaveis');
+    const categorias = await db.getAll('categorias_gastos');
     const tbody = document.getElementById('tabelaGastosVariaveis');
     tbody.innerHTML = '';
 
-    gastosVariaveis.forEach(gasto => {
-        const categorias = db.getAll('categorias_gastos');
-        const categoria = categorias.find(c => c.id === Number(gasto.categoriaId));
-        const pago = gasto.pago ? true : false;
-        
-        tbody.innerHTML += `
-            <tr>
-                <td>${new Date(gasto.data).toLocaleDateString()}</td>
-                <td>${gasto.descricao}</td>
-                <td>${categoria ? categoria.nome : 'N/A'}</td>
-                <td>${Utils.formatarMoeda(gasto.valor)}</td>
-                <td>
-                    <div class="acoes">
-                        ${!pago ? `
-                            <button class="btn btn-success" onclick="abrirModalPagamento('variavel', ${gasto.id})">
-                                <i class="fas fa-check-circle"></i>
+    if (Array.isArray(gastosVariaveis)) {
+        gastosVariaveis.forEach(gasto => {
+            const categoria = Array.isArray(categorias) ? categorias.find(c => c.id === Number(gasto.categoriaId)) : null;
+            const pago = gasto.pago ? true : false;
+            tbody.innerHTML += `
+                <tr>
+                    <td>${new Date(gasto.data).toLocaleDateString()}</td>
+                    <td>${gasto.descricao}</td>
+                    <td>${categoria ? categoria.nome : 'N/A'}</td>
+                    <td>${Utils.formatarMoeda(gasto.valor)}</td>
+                    <td>
+                        <div class="acoes">
+                            ${!pago ? `
+                                <button class="btn btn-success" onclick="abrirModalPagamento('variavel', ${gasto.id})">
+                                    <i class="fas fa-check-circle"></i>
+                                </button>
+                            ` : `
+                                <button class="btn btn-info" onclick="verDetalhesPagamento('variavel', ${gasto.id})">
+                                    <i class="fas fa-receipt"></i>
+                                </button>
+                            `}
+                            <button class="btn btn-editar" onclick="editarGasto('variavel', ${gasto.id})">
+                                <i class="fas fa-edit"></i>
                             </button>
-                        ` : `
-                            <button class="btn btn-info" onclick="verDetalhesPagamento('variavel', ${gasto.id})">
-                                <i class="fas fa-receipt"></i>
+                            <button class="btn btn-perigo" onclick="excluirGasto('variavel', ${gasto.id})">
+                                <i class="fas fa-trash"></i>
                             </button>
-                        `}
-                        <button class="btn btn-editar" onclick="editarGasto('variavel', ${gasto.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-perigo" onclick="excluirGasto('variavel', ${gasto.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        ${gasto.comprovante ? `
-                            <button class="btn btn-info" onclick="visualizarComprovante('${gasto.comprovante}')">
-                                <i class="fas fa-file-image"></i>
-                            </button>
-                        ` : ''}
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
+                            ${gasto.comprovante ? `
+                                <button class="btn btn-info" onclick="visualizarComprovante('${gasto.comprovante}')">
+                                    <i class="fas fa-file-image"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+    }
 }
 
 // Abre o modal para novo gasto
@@ -226,35 +230,26 @@ function salvarGasto(event) {
 }
 
 // Edita um gasto
-function editarGasto(tipo, id) {
+async function editarGasto(tipo, id) {
     const tabela = tipo === 'fixo' ? 'gastos_fixos' : 'gastos_variaveis';
-    const gastos = db.getAll(tabela);
-    const gasto = gastos.find(g => g.id === Number(id));
-    
+    const gastos = await db.getAll(tabela);
+    const gasto = Array.isArray(gastos) ? gastos.find(g => g.id === Number(id)) : null;
     if (!gasto) return;
 
     document.getElementById('modalGasto').classList.add('active');
     document.getElementById('modalTituloGasto').textContent = tipo === 'fixo' ? 'Editar Gasto Fixo' : 'Editar Gasto Variável';
     document.getElementById('tipoGasto').value = tipo;
     document.getElementById('gastoId').value = id;
-    
     document.getElementById('descricaoGasto').value = gasto.descricao;
     document.getElementById('categoriaGasto').value = gasto.categoriaId;
     document.getElementById('tipoGastoSelect').value = gasto.tipo;
     document.getElementById('valorGasto').value = gasto.valor;
-
     document.getElementById('camposGastoFixo').style.display = tipo === 'fixo' ? 'block' : 'none';
     document.getElementById('camposGastoVariavel').style.display = tipo === 'variavel' ? 'block' : 'none';
-
     if (tipo === 'fixo') {
         document.getElementById('vencimentoGasto').value = gasto.vencimento;
     } else {
         document.getElementById('dataGasto').value = gasto.data;
-        if (gasto.comprovante) {
-            comprovanteSelecionado = gasto.comprovante;
-            document.getElementById('previewImage').src = gasto.comprovante;
-            document.getElementById('previewArea').hidden = false;
-        }
     }
 }
 
@@ -358,38 +353,49 @@ function visualizarComprovante(comprovante) {
 }
 
 // Atualiza os gráficos
-function atualizarGraficos() {
+async function atualizarGraficos() {
     const mesSelecionado = document.getElementById('mesGrafico').value;
     const [ano, mes] = mesSelecionado.split('-');
     const primeiroDia = new Date(ano, mes - 1, 1);
     const ultimoDia = new Date(ano, mes, 0);
 
     // Buscar gastos do período
-    const gastosFixos = db.getAll('gastos_fixos');
-    const gastosVariaveis = db.getAll('gastos_variaveis').filter(gasto => {
+    const gastosFixosAll = await db.getAll('gastos_fixos');
+    const gastosVariaveisAll = await db.getAll('gastos_variaveis');
+    const categorias = await db.getAll('categorias_gastos');
+
+    // Filtrar gastos do período
+    const gastosFixos = Array.isArray(gastosFixosAll) ? gastosFixosAll.filter(gasto => {
+        const data = new Date(gasto.dataPagamento || primeiroDia);
+        return data >= primeiroDia && data <= ultimoDia;
+    }) : [];
+    const gastosVariaveis = Array.isArray(gastosVariaveisAll) ? gastosVariaveisAll.filter(gasto => {
         const data = new Date(gasto.data);
         return data >= primeiroDia && data <= ultimoDia;
-    });
+    }) : [];
 
     // Calcular totais por categoria
     const gastosPorCategoria = {};
-    const categorias = db.getAll('categorias_gastos');
 
     // Somar gastos fixos
-    gastosFixos.forEach(gasto => {
-        if (!gastosPorCategoria[gasto.categoriaId]) {
-            gastosPorCategoria[gasto.categoriaId] = 0;
-        }
-        gastosPorCategoria[gasto.categoriaId] += Number(gasto.valor);
-    });
+    if (Array.isArray(gastosFixos)) {
+        gastosFixos.forEach(gasto => {
+            if (!gastosPorCategoria[gasto.categoriaId]) {
+                gastosPorCategoria[gasto.categoriaId] = 0;
+            }
+            gastosPorCategoria[gasto.categoriaId] += Number(gasto.valor);
+        });
+    }
 
     // Somar gastos variáveis
-    gastosVariaveis.forEach(gasto => {
-        if (!gastosPorCategoria[gasto.categoriaId]) {
-            gastosPorCategoria[gasto.categoriaId] = 0;
-        }
-        gastosPorCategoria[gasto.categoriaId] += Number(gasto.valor);
-    });
+    if (Array.isArray(gastosVariaveis)) {
+        gastosVariaveis.forEach(gasto => {
+            if (!gastosPorCategoria[gasto.categoriaId]) {
+                gastosPorCategoria[gasto.categoriaId] = 0;
+            }
+            gastosPorCategoria[gasto.categoriaId] += Number(gasto.valor);
+        });
+    }
 
     // Preparar dados para o gráfico
     const labels = [];
@@ -400,7 +406,7 @@ function atualizarGraficos() {
     ];
 
     Object.keys(gastosPorCategoria).forEach((categoriaId, index) => {
-        const categoria = categorias.find(c => c.id === Number(categoriaId));
+        const categoria = Array.isArray(categorias) ? categorias.find(c => c.id === Number(categoriaId)) : null;
         if (categoria) {
             labels.push(categoria.nome);
             dados.push(gastosPorCategoria[categoriaId]);
@@ -503,76 +509,79 @@ function atualizarSubcategorias() {
 }
 
 // Carrega a lista completa de gastos
-function carregarListaGastos(mesFiltro = null) {
+async function carregarListaGastos(mesFiltro = null) {
     const tbody = document.getElementById('tabelaGastos');
     if (!tbody) return;
-    
     tbody.innerHTML = '';
-    
-    // Obter todos os gastos variáveis
-    const gastosVariaveis = db.getAll('gastos_variaveis');
-    const categorias = db.getAll('categorias_gastos');
+
+    // Obter todos os gastos variáveis e categorias
+    const gastosVariaveis = await db.getAll('gastos_variaveis');
+    const categorias = await db.getAll('categorias_gastos');
+
+    // Garantir que temos arrays
+    let gastosFiltrados = Array.isArray(gastosVariaveis) ? [...gastosVariaveis] : [];
     
     // Filtrar por mês se especificado
-    let gastosFiltrados = gastosVariaveis;
     if (mesFiltro) {
         const [ano, mes] = mesFiltro.split('-');
         const primeiroDia = new Date(ano, mes - 1, 1);
         const ultimoDia = new Date(ano, mes, 0);
-        
-        gastosFiltrados = gastosVariaveis.filter(gasto => {
+        gastosFiltrados = gastosFiltrados.filter(gasto => {
             const dataGasto = new Date(gasto.data);
             return dataGasto >= primeiroDia && dataGasto <= ultimoDia;
         });
     }
-    
+
     // Ordenar por data (mais recente primeiro)
-    gastosFiltrados.sort((a, b) => new Date(b.data) - new Date(a.data));
-    
+    if (Array.isArray(gastosFiltrados)) {
+        gastosFiltrados.sort((a, b) => new Date(b.data) - new Date(a.data));
+    }
+
     // Adicionar à tabela
-    gastosFiltrados.forEach(gasto => {
-        const categoria = categorias.find(c => c.id === Number(gasto.categoriaId));
-        const pago = gasto.pago ? true : false;
-        
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${new Date(gasto.data).toLocaleDateString()}</td>
-            <td>${gasto.descricao}</td>
-            <td>${categoria ? categoria.nome : 'N/A'}</td>
-            <td>${Utils.formatarMoeda(gasto.valor)}</td>
-            <td>
-                ${gasto.comprovante ? 
-                    `<button class="btn btn-info" onclick="visualizarComprovante('${gasto.comprovante}')">
-                        <i class="fas fa-file-image"></i> Ver
-                    </button>` : 
-                    'Sem comprovante'
-                }
-            </td>
-            <td>
-                <div class="acoes">
-                    ${!pago ? `
-                        <button class="btn btn-success" onclick="abrirModalPagamento('variavel', ${gasto.id})">
-                            <i class="fas fa-check-circle"></i> Pagar
+    if (Array.isArray(gastosFiltrados)) {
+        gastosFiltrados.forEach(gasto => {
+            const categoria = Array.isArray(categorias) ? categorias.find(c => c.id === Number(gasto.categoriaId)) : null;
+            const pago = gasto.pago ? true : false;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${new Date(gasto.data).toLocaleDateString()}</td>
+                <td>${gasto.descricao}</td>
+                <td>${categoria ? categoria.nome : 'N/A'}</td>
+                <td>${Utils.formatarMoeda(gasto.valor)}</td>
+                <td>
+                    ${gasto.comprovante ? 
+                        `<button class="btn btn-info" onclick="visualizarComprovante('${gasto.comprovante}')">
+                            <i class="fas fa-file-image"></i> Ver
+                        </button>` : 
+                        'Sem comprovante'
+                    }
+                </td>
+                <td>
+                    <div class="acoes">
+                        ${!pago ? `
+                            <button class="btn btn-success" onclick="abrirModalPagamento('variavel', ${gasto.id})">
+                                <i class="fas fa-check-circle"></i> Pagar
+                            </button>
+                        ` : `
+                            <button class="btn btn-info" onclick="verDetalhesPagamento('variavel', ${gasto.id})">
+                                <i class="fas fa-receipt"></i> Detalhes
+                            </button>
+                        `}
+                        <button class="btn btn-editar" onclick="editarGasto('variavel', ${gasto.id})">
+                            <i class="fas fa-edit"></i>
                         </button>
-                    ` : `
-                        <button class="btn btn-info" onclick="verDetalhesPagamento('variavel', ${gasto.id})">
-                            <i class="fas fa-receipt"></i> Detalhes
+                        <button class="btn btn-perigo" onclick="excluirGasto('variavel', ${gasto.id})">
+                            <i class="fas fa-trash"></i>
                         </button>
-                    `}
-                    <button class="btn btn-editar" onclick="editarGasto('variavel', ${gasto.id})">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-perigo" onclick="excluirGasto('variavel', ${gasto.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-    
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
     // Mostrar mensagem se não houver gastos
-    if (gastosFiltrados.length === 0) {
+    if (!gastosFiltrados || gastosFiltrados.length === 0) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td colspan="6" class="text-center">
@@ -593,110 +602,96 @@ function filtrarGastosPorMes() {
 }
 
 // Carrega os bancos nos selects
-function carregarBancos() {
-    const bancos = db.getAll('bancos');
-    
+async function carregarBancos() {
+    const bancos = await db.getAll('bancos');
     // Carregar bancos no select de pagamento
     const selectPagamento = document.getElementById('pagamentoBanco');
     if (selectPagamento) {
         selectPagamento.innerHTML = '<option value="">Selecione um banco</option>';
-        bancos.forEach(banco => {
-            selectPagamento.innerHTML += `<option value="${banco.id}">${banco.nome} (${Utils.formatarMoeda(banco.saldo)})</option>`;
-        });
+        if (Array.isArray(bancos)) {
+            bancos.forEach(banco => {
+                selectPagamento.innerHTML += `<option value="${banco.id}">${banco.nome} (${Utils.formatarMoeda(banco.saldo)})</option>`;
+            });
+        }
     }
-    
     // Carregar bancos no select de recebimento
     const selectRecebimento = document.getElementById('recebimentoBanco');
     if (selectRecebimento) {
         selectRecebimento.innerHTML = '<option value="">Selecione um banco</option>';
-        bancos.forEach(banco => {
-            selectRecebimento.innerHTML += `<option value="${banco.id}">${banco.nome} (${Utils.formatarMoeda(banco.saldo)})</option>`;
-        });
+        if (Array.isArray(bancos)) {
+            bancos.forEach(banco => {
+                selectRecebimento.innerHTML += `<option value="${banco.id}">${banco.nome} (${Utils.formatarMoeda(banco.saldo)})</option>`;
+            });
+        }
     }
 }
 
 // Abre o modal de pagamento
-function abrirModalPagamento(tipo, id) {
+async function abrirModalPagamento(tipo, id) {
     const tabela = tipo === 'fixo' ? 'gastos_fixos' : 'gastos_variaveis';
-    const gastos = db.getAll(tabela);
-    const gasto = gastos.find(g => g.id === Number(id));
-    
+    const gastos = await db.getAll(tabela);
+    const gasto = Array.isArray(gastos) ? gastos.find(g => g.id === Number(id)) : null;
     if (!gasto) return;
-    
     // Preencher os campos do modal
     document.getElementById('pagamentoGastoId').value = id;
     document.getElementById('pagamentoGastoTipo').value = tipo;
     document.getElementById('pagamentoDescricao').textContent = gasto.descricao;
     document.getElementById('pagamentoValor').textContent = Utils.formatarMoeda(gasto.valor);
-    
     // Configurar data atual
     document.getElementById('pagamentoData').value = new Date().toISOString().split('T')[0];
-    
     // Limpar comprovante
     comprovantePagamentoSelecionado = null;
     document.getElementById('previewAreaPagamento').hidden = true;
-    
     // Exibir o modal
     document.getElementById('modalPagamento').classList.add('active');
 }
 
 // Confirma o pagamento
-function confirmarPagamento() {
+async function confirmarPagamento() {
     const gastoId = Number(document.getElementById('pagamentoGastoId').value);
     const gastoTipo = document.getElementById('pagamentoGastoTipo').value;
     const bancoId = Number(document.getElementById('pagamentoBanco').value);
     const metodo = document.getElementById('pagamentoMetodo').value;
     const dataPagamento = document.getElementById('pagamentoData').value;
-    
     // Validar campos obrigatórios
     if (!bancoId || !metodo || !dataPagamento) {
         alert('Por favor, preencha todos os campos obrigatórios.');
         return;
     }
-    
     // Obter o gasto
     const tabela = gastoTipo === 'fixo' ? 'gastos_fixos' : 'gastos_variaveis';
-    const gastos = db.getAll(tabela);
-    const gasto = gastos.find(g => g.id === gastoId);
-    
+    const gastos = await db.getAll(tabela);
+    const gasto = Array.isArray(gastos) ? gastos.find(g => g.id === gastoId) : null;
     if (!gasto) {
         alert('Gasto não encontrado.');
         return;
     }
-    
     // Obter o banco
-    const bancos = db.getAll('bancos');
-    const banco = bancos.find(b => b.id === bancoId);
-    
+    const bancos = await db.getAll('bancos');
+    const banco = Array.isArray(bancos) ? bancos.find(b => b.id === bancoId) : null;
     if (!banco) {
         alert('Banco não encontrado.');
         return;
     }
-    
     // Verificar saldo
     if (banco.saldo < gasto.valor) {
         if (!confirm(`O saldo do banco (${Utils.formatarMoeda(banco.saldo)}) é menor que o valor do gasto (${Utils.formatarMoeda(gasto.valor)}). Deseja continuar?`)) {
             return;
         }
     }
-    
     // Atualizar o gasto
     gasto.pago = true;
     gasto.dataPagamento = dataPagamento;
     gasto.metodoPagamento = metodo;
     gasto.bancoId = bancoId;
-    
     if (comprovantePagamentoSelecionado) {
         gasto.comprovantePagamento = comprovantePagamentoSelecionado;
     }
-    
     // Atualizar o banco
     banco.saldo -= Number(gasto.valor);
-    
     // Salvar as alterações
-    db.update(tabela, gastoId, gasto);
-    db.update('bancos', bancoId, banco);
-    
+    await db.update(tabela, gastoId, gasto);
+    await db.update('bancos', bancoId, banco);
     // Registrar o pagamento no histórico
     const pagamento = {
         id: Date.now(),
@@ -709,32 +704,27 @@ function confirmarPagamento() {
         bancoId: bancoId,
         comprovante: comprovantePagamentoSelecionado
     };
-    
-    const pagamentosRecentes = db.getAll('pagamentosRecentes') || [];
+    const pagamentosRecentes = (await db.getAll('pagamentosRecentes')) || [];
     pagamentosRecentes.push(pagamento);
     localStorage.setItem('pagamentosRecentes', JSON.stringify(pagamentosRecentes));
-    
     // Fechar o modal e atualizar a interface
     fecharModal('modalPagamento');
-    carregarGastos();
-    carregarBancos();
+    await carregarGastos();
+    await carregarBancos();
     alert('Pagamento registrado com sucesso!');
 }
 
 // Ver detalhes do pagamento
-function verDetalhesPagamento(tipo, id) {
+async function verDetalhesPagamento(tipo, id) {
     const tabela = tipo === 'fixo' ? 'gastos_fixos' : 'gastos_variaveis';
-    const gastos = db.getAll(tabela);
-    const gasto = gastos.find(g => g.id === Number(id));
-    
+    const gastos = await db.getAll(tabela);
+    const gasto = Array.isArray(gastos) ? gastos.find(g => g.id === Number(id)) : null;
     if (!gasto || !gasto.pago) {
         alert('Detalhes do pagamento não disponíveis.');
         return;
     }
-    
-    const bancos = db.getAll('bancos');
-    const banco = bancos.find(b => b.id === Number(gasto.bancoId));
-    
+    const bancos = await db.getAll('bancos');
+    const banco = Array.isArray(bancos) ? bancos.find(b => b.id === Number(gasto.bancoId)) : null;
     // Criar modal de detalhes
     const modal = document.createElement('div');
     modal.className = 'modal active';
@@ -763,7 +753,6 @@ function verDetalhesPagamento(tipo, id) {
             </div>
         </div>
     `;
-    
     document.body.appendChild(modal);
 }
 

@@ -545,19 +545,3 @@ body.dark-theme {
 .dark-theme .table tbody tr:hover {
     background-color: #40405c;
 }
-
-.progresso {
-    height: 100%;
-    background-color: var(--danger-color);
-    border-radius: 10px;
-    transition: width 0.5s ease-in-out;
-}
-
-.progresso.positive-bg {
-    background-color: var(--success-color);
-}
-
-/* Tabela */
-.table-container {
-    overflow-x: auto;
-}
