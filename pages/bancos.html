@@ -300,11 +300,11 @@
 
     <script>
         // DOMContentLoaded para garantir que o DOM esteja pronto
-        document.addEventListener('DOMContentLoaded', () => {
+        window.onUserAuthenticated = function() {
             carregarBancos();
             carregarTransacoes();
             configurarFiltros();
-        });
+        };
         
         // Carrega a lista de bancos
         async function carregarBancos() {

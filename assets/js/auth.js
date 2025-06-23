@@ -25,11 +25,7 @@ const authManager = {
                     !window.location.href.includes('recuperar-senha.html')) {
                     
                     // Lista de páginas que não requerem autenticação
-                    const paginasPublicas = [
-                        'index.html',
-                        'sobre.html',
-                        'contato.html'
-                    ];
+                    const paginasPublicas = [];
                     
                     // Verificar se a página atual está na lista de páginas públicas
                     const paginaAtual = window.location.pathname.split('/').pop();
@@ -46,6 +42,10 @@ const authManager = {
                     } else {
                         console.log("Página pública. Não é necessário autenticação.");
                     }
+                }
+
+                if (user && typeof window.onUserAuthenticated === 'function') {
+                    window.onUserAuthenticated();
                 }
             });
         } else {
@@ -185,4 +185,7 @@ const authManager = {
 // Inicializar o sistema de autenticação quando o documento estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     authManager.init();
-}); 
+});
+
+// No final do arquivo, garantir que a função exista
+window.onUserAuthenticated = function(){}; 

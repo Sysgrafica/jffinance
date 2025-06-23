@@ -111,9 +111,8 @@ const db = {
             return `usuarios/${userId}/${collectionName}`;
         }
         
-        // Se não houver usuário autenticado, usar um caminho temporário
-        console.warn("Usuário não autenticado. Usando caminho temporário para a coleção.");
-        return `temp/${Date.now()}/${collectionName}`;
+        // Se não houver usuário autenticado, lançar erro
+        throw new Error("Usuário não autenticado. Não é permitido acessar o banco de dados sem login.");
     },
 
     // Obtém todos os registros de uma coleção

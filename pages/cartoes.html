@@ -342,9 +342,9 @@
             return dataVencimento;
         }
 
-        function calcularFatura(cartao, mes, ano) {
-            const todasCompras = db.getAll('compras');
-            const comprasDoCartao = todasCompras.filter(c => c.cartaoId === cartao.id);
+        async function calcularFatura(cartao, mes, ano) {
+            const todasCompras = await db.getAll('compras');
+            const comprasDoCartao = Array.isArray(todasCompras) ? todasCompras.filter(c => c.cartaoId === cartao.id) : [];
             let faturaDoMes = 0;
 
             comprasDoCartao.forEach(compra => {
@@ -387,7 +387,7 @@
             if (!Array.isArray(cartoes)) return;
 
             for (const cartao of cartoes) {
-                const faturaAtual = calcularFatura(cartao, mes, ano);
+                const faturaAtual = await calcularFatura(cartao, mes, ano);
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><a href="#" onclick="visualizarFatura(${cartao.id})">${cartao.nome}</a></td>
@@ -436,7 +436,7 @@
 
             document.getElementById('mesSelecionado').textContent = mesReferencia.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
-            const valorFatura = calcularFatura(cartaoSelecionado, mes, ano);
+            const valorFatura = await calcularFatura(cartaoSelecionado, mes, ano);
             document.getElementById('totalFatura').textContent = Utils.formatarMoeda(valorFatura);
 
             const faturaPaga = cartaoSelecionado.faturasPagas && cartaoSelecionado.faturasPagas.some(fp => {
@@ -502,14 +502,14 @@
         }
 
         // Funções para Modal de Pagamento
-        function abrirModalPagamento() {
+        async function abrirModalPagamento() {
             if (!cartaoSelecionado) return;
             
             const hoje = new Date();
             const mesReferencia = new Date(hoje.getFullYear(), hoje.getMonth() + mesAtualOffset, 1);
             const mes = mesReferencia.getMonth();
             const ano = mesReferencia.getFullYear();
-            const valorFatura = calcularFatura(cartaoSelecionado, mes, ano);
+            const valorFatura = await calcularFatura(cartaoSelecionado, mes, ano);
 
             document.getElementById('nomeCartaoPagamento').textContent = cartaoSelecionado.nome;
             document.getElementById('valorPagamento').value = valorFatura.toFixed(2);
